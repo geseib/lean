@@ -1,0 +1,10 @@
+id = "reasoning/r2"
+title = "The hotfix regression: read a counterexample, fix the policy"
+type = "symcc"
+world = "01-cedar/world"
+policies = "policies.cedar"
+hints = [
+  "Run the check and read the counterexample: what tier, what riskScore, which principal?",
+  "Two independent fixes both work: confine the fast lane to staging, or restore the `agents-never-deploy-prod` forbid. Doing both is defense in depth.",
+  "The tests are there so you cannot 'fix' the proof by deleting the fast lane; low-risk staging hotfixes must keep working.",
+]

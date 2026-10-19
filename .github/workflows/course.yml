@@ -1,0 +1,32 @@
+name: course
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Cedar CLI (with symcc) and Dogwood CLI
+        run: |
+          cargo install cedar-policy-cli --locked --features analyze
+          git clone --depth 1 https://github.com/dogwood-policy/dogwood /tmp/dogwood
+          cargo install --locked --path /tmp/dogwood/dogwood-cli
+
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - run: pip install cvc5 z3-solver
+
+      - name: Lean
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Everything
+        run: ./scripts/check-all.sh

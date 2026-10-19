@@ -1,0 +1,11 @@
+id = "lean/e4"
+title = "Lifecycle properties: no skipped gates"
+type = "lean"
+project = "../.."
+file = "Exercises/E4_Lifecycle.lean"
+solution = "Solutions/E4_Lifecycle.lean"
+hints = [
+  "Open Exercises/E4_Lifecycle.lean in VS Code (Lean 4 extension) and put your cursor after `by` to see the goal.",
+  "Each exercise's docstring names the tactic or lemma to reach for. The matching lesson in Course/ proves a sibling theorem: copy its shape.",
+  "Still stuck? The reference proofs are in modules/04-lean/Solutions/E4_Lifecycle.lean.",
+]

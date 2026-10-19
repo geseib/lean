@@ -1,0 +1,8 @@
+id = "cedar/c4"
+title = "Let the validator catch an agent's typos"
+type = "cedar"
+hints = [
+  "Run the check and read the validator's errors: each one points at a span in policy.cedar.",
+  "Compare every attribute against world/schema.cedarschema: the names and the types must match.",
+  "Three bugs: a misspelled attribute, a string compared to a Long, and a context field that does not exist (look at what mergePR's context declares).",
+]

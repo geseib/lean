@@ -1,0 +1,33 @@
+# Lints, AgentCore-style. "fails" means the bad thing is NOT the case.
+
+[[property]]
+name = "po-approves-docs can match some request (it is not dead)"
+check = "never-matches"
+expect = "fails"
+principal = "Orchard::Human"
+action = 'Orchard::Action::"approveArtifact"'
+resource = "Orchard::Artifact"
+policies = "policies.cedar"
+policy_id = "po-approves-docs"
+
+[[property]]
+name = "trusted-agents-push is not a blanket grant"
+check = "always-matches"
+expect = "fails"
+principal = "Orchard::Agent"
+action = 'Orchard::Action::"pushBranch"'
+resource = "Orchard::Repo"
+policies = "policies.cedar"
+policy_id = "trusted-agents-push"
+
+[[property]]
+name = "ops-reads-secrets is not completely shadowed by the forbid"
+check = "matches-implies"
+expect = "fails"
+principal = "Orchard::Agent"
+action = 'Orchard::Action::"readSecret"'
+resource = "Orchard::Secret"
+policies = "policies.cedar"
+policy_id = "ops-reads-secrets"
+other = "policies.cedar"
+other_policy_id = "no-agent-restricted-secrets"

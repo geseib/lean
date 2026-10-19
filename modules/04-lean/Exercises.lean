@@ -1,0 +1,4 @@
+import Exercises.E1_Basics
+import Exercises.E2_Authorization
+import Exercises.E3_Temporal
+import Exercises.E4_Lifecycle

@@ -1,0 +1,223 @@
+[
+  {
+    "name": "ReadFile",
+    "description": "Read a file from the working tree.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ]
+    }
+  },
+  {
+    "name": "ReadSecret",
+    "description": "Read a credential from the secret store (or a file the gateway classified as secret, e.g. .env).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    }
+  },
+  {
+    "name": "WebFetch",
+    "description": "Fetch a URL from the public internet.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
+      ]
+    }
+  },
+  {
+    "name": "WriteSpec",
+    "description": "Write or update spec.md for a feature (PDLC: design stage).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "feature": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "feature"
+      ]
+    }
+  },
+  {
+    "name": "RequestApproval",
+    "description": "Block until a human approves or rejects an artifact (intent, spec, plan, or release). Returns the human verdict.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "change": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "change",
+        "kind"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "approved": {
+          "type": "boolean"
+        },
+        "approver": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "approved",
+        "approver"
+      ]
+    }
+  },
+  {
+    "name": "WriteCode",
+    "description": "Edit source files for a feature (SDLC: build stage).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "feature": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "feature",
+        "path"
+      ]
+    }
+  },
+  {
+    "name": "PushCommit",
+    "description": "Push a commit to the branch backing a pull request.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "pr": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "pr"
+      ]
+    }
+  },
+  {
+    "name": "RunTests",
+    "description": "Run the CI suite for a pull request at its current head.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "pr": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "pr"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "passed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "passed"
+      ]
+    }
+  },
+  {
+    "name": "MergePullRequest",
+    "description": "Merge a pull request into main.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "pr": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "pr"
+      ]
+    }
+  },
+  {
+    "name": "Deploy",
+    "description": "Deploy a change to an environment (dev, staging, prod).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "change": {
+          "type": "string"
+        },
+        "env": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "change",
+        "env"
+      ]
+    }
+  },
+  {
+    "name": "InvokeModel",
+    "description": "Call a sub-model (e.g. a subagent) with a token budget.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "tokens": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tokens"
+      ]
+    }
+  },
+  {
+    "name": "RunCommand",
+    "description": "Run a shell command that no more specific tool covers.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "command"
+      ]
+    }
+  }
+]

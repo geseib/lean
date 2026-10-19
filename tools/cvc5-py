@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+"""A cvc5 executable built from the official cvc5 Python bindings.
+
+Cedar's SymCC drives `cvc5 --lang smt` interactively over stdin/stdout. Where
+the cvc5 binary is not installable but `pip install cvc5` is, this script
+plays the same role with the same solver engine:
+
+    cedar symcc --cvc5-path tools/cvc5-py ...      (or: export CVC5=tools/cvc5-py)
+
+It reads SMT-LIB commands as they arrive, runs each with cvc5's own parser
+and command interpreter, and flushes each command's output immediately, as the
+interactive cvc5 binary does. Command-line flags (`--lang smt`, `--tlimit=N`)
+are accepted; `--tlimit` is applied.
+
+Set SMT_TEE=/path/file.smt2 to keep a copy of the query.
+"""
+import os
+import sys
+
+try:
+    import cvc5
+except ImportError:
+    sys.stderr.write("cvc5-py: the cvc5 Python package is missing (pip install cvc5)\n")
+    sys.exit(127)
+
+
+def complete_commands(buffer: str):
+    """Split off every complete top-level s-expression; return (commands, rest)."""
+    out, depth, start, i, n = [], 0, None, 0, len(buffer)
+    while i < n:
+        ch = buffer[i]
+        if ch == ";":                      # comment to end of line
+            j = buffer.find("\n", i)
+            if j == -1:
+                break
+            i = j
+        elif ch == '"':                    # string literal ("" escapes a quote)
+            j = i + 1
+            while True:
+                j = buffer.find('"', j)
+                if j == -1:            # unterminated: wait for more input
+                    i = n
+                    break
+                if j + 1 < n and buffer[j + 1] == '"':
+                    j += 2
+                    continue
+                break
+            if i == n:
+                break
+            i = j
+        elif ch == "|":                    # quoted symbol
+            j = buffer.find("|", i + 1)
+            if j == -1:
+                break
+            i = j
+        elif ch == "(":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0 and start is not None:
+                out.append(buffer[start:i + 1])
+                start = None
+        i += 1
+    rest = buffer[start:] if start is not None else ""
+    return out, rest
+
+
+def main() -> int:
+    tm = cvc5.TermManager()
+    solver = cvc5.Solver(tm)
+    for arg in sys.argv[1:]:
+        if arg.startswith("--tlimit="):
+            solver.setOption("tlimit-per", arg.split("=", 1)[1])
+    sm = cvc5.SymbolManager(tm)
+    parser = cvc5.InputParser(solver, sm)
+    parser.setIncrementalStringInput(cvc5.InputLanguage.SMT_LIB_2_6, "stdin")
+
+    tee = open(os.environ["SMT_TEE"], "w") if os.environ.get("SMT_TEE") else None
+    pending = ""
+    for line in sys.stdin:
+        if tee:
+            tee.write(line)
+            tee.flush()
+        pending += line
+        commands, pending = complete_commands(pending)
+        for text in commands:
+            parser.appendIncrementalStringInput(text + "\n")
+            cmd = parser.nextCommand()
+            if cmd.isNull():
+                continue
+            try:
+                result = cmd.invoke(solver, sm)
+            except Exception as err:  # mirror cvc5's (error "...") reply
+                result = '(error "' + str(err).replace('"', "'") + '")\n'
+            if result:
+                sys.stdout.write(result if result.endswith("\n") else result + "\n")
+                sys.stdout.flush()
+            if text.lstrip("( ").startswith("exit"):
+                return 0
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

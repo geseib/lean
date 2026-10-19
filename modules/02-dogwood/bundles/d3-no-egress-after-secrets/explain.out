@@ -1,0 +1,9 @@
+Only past events from this request's principal count.
+
+@id("default_tools")
+PERMIT any principal to perform any action in CallTool on any resource
+
+@id("no_egress_after_secret")
+FORBID any principal to perform WebFetch on any resource
+  when:
+    a ReadSecret request with any name occurred within the last 24 hours

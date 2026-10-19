@@ -1,0 +1,57 @@
+[
+ {
+  "name": "coder hotfixes staging at low risk",
+  "principal": "Orchard::Agent::\"coder\"",
+  "action": "Orchard::Action::\"deploy\"",
+  "resource": "Orchard::Environment::\"staging\"",
+  "decision": "allow",
+  "context": {
+   "change": "hf-7",
+   "riskScore": 1
+  }
+ },
+ {
+  "name": "coder may not hotfix staging at high risk",
+  "principal": "Orchard::Agent::\"coder\"",
+  "action": "Orchard::Action::\"deploy\"",
+  "resource": "Orchard::Environment::\"staging\"",
+  "decision": "deny",
+  "context": {
+   "change": "hf-7",
+   "riskScore": 5
+  }
+ },
+ {
+  "name": "coder may not hotfix prod",
+  "principal": "Orchard::Agent::\"coder\"",
+  "action": "Orchard::Action::\"deploy\"",
+  "resource": "Orchard::Environment::\"prod\"",
+  "decision": "deny",
+  "context": {
+   "change": "hf-7",
+   "riskScore": 1
+  }
+ },
+ {
+  "name": "deployer still ships staging normally",
+  "principal": "Orchard::Agent::\"deployer\"",
+  "action": "Orchard::Action::\"deploy\"",
+  "resource": "Orchard::Environment::\"staging\"",
+  "decision": "allow",
+  "context": {
+   "change": "hf-7",
+   "riskScore": 7
+  }
+ },
+ {
+  "name": "rel still ships prod",
+  "principal": "Orchard::Human::\"rel\"",
+  "action": "Orchard::Action::\"deploy\"",
+  "resource": "Orchard::Environment::\"prod\"",
+  "decision": "allow",
+  "context": {
+   "change": "hf-7",
+   "riskScore": 3
+  }
+ }
+]

@@ -1,0 +1,5 @@
+@0    coder InvokeModel.request tokens=20000   # 20k  -> ALLOW
+@60   coder InvokeModel.request tokens=20000   # 40k (same amount, different time: still counted) -> ALLOW
+@120  coder InvokeModel.request tokens=15000   # 55k  -> DENY
+@180  coder InvokeModel.request tokens=5000    # 60k: denied requests still count  -> DENY
+@3601 coder InvokeModel.request tokens=5000    # first 20k aged out: 45k -> ALLOW

@@ -1,0 +1,18 @@
+#!/bin/sh
+# Cedar's SymCC drives cvc5 over SMT-LIB on stdin. z3 speaks the same
+# protocol, so this shim lets `cedar symcc --cvc5-path tools/z3-as-cvc5` run
+# anywhere `pip install z3-solver` works. SymCC's verified encoding targets
+# cvc5; prefer it (export CVC5=/path/to/cvc5) when you have it.
+#
+# Set SMT_TEE=/path/file.smt2 to save the exact query SymCC sends - module 03
+# reads one to see what "compiling a policy to logic" means.
+Z3="${Z3:-$(command -v z3)}"
+if [ -z "$Z3" ]; then
+  echo "z3-as-cvc5: z3 not found (pip install z3-solver)" >&2
+  exit 127
+fi
+if [ -n "$SMT_TEE" ]; then
+  tee "$SMT_TEE" | "$Z3" -in -smt2
+else
+  exec "$Z3" -in -smt2
+fi

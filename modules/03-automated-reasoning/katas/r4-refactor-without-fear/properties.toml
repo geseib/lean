@@ -1,0 +1,17 @@
+[[property]]
+name = "Refactor is equivalent for agents"
+check = "equivalent"
+principal = "Orchard::Agent"
+action = 'Orchard::Action::"deploy"'
+resource = "Orchard::Environment"
+policies = "policies.cedar"
+other = "original.cedar"
+
+[[property]]
+name = "Refactor is equivalent for humans"
+check = "equivalent"
+principal = "Orchard::Human"
+action = 'Orchard::Action::"deploy"'
+resource = "Orchard::Environment"
+policies = "policies.cedar"
+other = "original.cedar"

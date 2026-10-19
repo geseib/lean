@@ -1,0 +1,13 @@
+@0    coder RunTests.request          pr="9"
+@200  coder RunTests.response         pr="9" | passed=true
+@210  coder MergePullRequest.request  pr="9"                         # green, no review -> DENY
+@220  coder RequestApproval.request   change="9" kind="review"
+@2000 coder RequestApproval.response  change="9" kind="review" | approved=true approver="lead-sam"
+@2010 coder MergePullRequest.request  pr="9"                         # green + review   -> ALLOW
+@2020 coder PushCommit.request        pr="9"
+@2030 coder MergePullRequest.request  pr="9"                         # review, stale CI -> DENY
+@2040 coder RequestApproval.request   change="10" kind="spec"
+@2900 coder RequestApproval.response  change="10" kind="spec" | approved=true approver="po-priya"
+@2910 coder RunTests.request          pr="10"
+@3000 coder RunTests.response         pr="10" | passed=true
+@3010 coder MergePullRequest.request  pr="10"                        # wrong kind of approval -> DENY

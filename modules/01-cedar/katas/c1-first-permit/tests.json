@@ -1,0 +1,8 @@
+[
+  { "name": "planner drafts the spec",          "principal": "Orchard::Agent::\"planner\"", "action": "Orchard::Action::\"draftArtifact\"",   "resource": "Orchard::Artifact::\"dark-mode/spec.md\"",   "decision": "allow" },
+  { "name": "coder (sdlc) may not draft specs", "principal": "Orchard::Agent::\"coder\"",   "action": "Orchard::Action::\"draftArtifact\"",   "resource": "Orchard::Artifact::\"dark-mode/spec.md\"",   "decision": "deny" },
+  { "name": "priya approves the intent",        "principal": "Orchard::Human::\"priya\"",   "action": "Orchard::Action::\"approveArtifact\"", "resource": "Orchard::Artifact::\"dark-mode/intent.md\"", "decision": "allow" },
+  { "name": "priya approves the spec",          "principal": "Orchard::Human::\"priya\"",   "action": "Orchard::Action::\"approveArtifact\"", "resource": "Orchard::Artifact::\"dark-mode/spec.md\"",   "decision": "allow" },
+  { "name": "priya may not approve the plan",   "principal": "Orchard::Human::\"priya\"",   "action": "Orchard::Action::\"approveArtifact\"", "resource": "Orchard::Artifact::\"dark-mode/plan.md\"",   "decision": "deny" },
+  { "name": "sam (code owner) may not approve the spec", "principal": "Orchard::Human::\"sam\"", "action": "Orchard::Action::\"approveArtifact\"", "resource": "Orchard::Artifact::\"dark-mode/spec.md\"", "decision": "deny" }
+]

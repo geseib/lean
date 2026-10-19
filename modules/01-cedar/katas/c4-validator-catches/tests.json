@@ -1,0 +1,7 @@
+[
+  { "name": "coder pushes a feature branch",      "principal": "Orchard::Agent::\"coder\"",      "action": "Orchard::Action::\"pushBranch\"", "resource": "Orchard::Repo::\"web-app\"", "context": { "branch": "feat/dark-mode" }, "decision": "allow" },
+  { "name": "coder may not push main",            "principal": "Orchard::Agent::\"coder\"",      "action": "Orchard::Action::\"pushBranch\"", "resource": "Orchard::Repo::\"web-app\"", "context": { "branch": "main" },           "decision": "deny" },
+  { "name": "intern-bot (trust 0) may not push",  "principal": "Orchard::Agent::\"intern-bot\"", "action": "Orchard::Action::\"pushBranch\"", "resource": "Orchard::Repo::\"web-app\"", "context": { "branch": "feat/x" },         "decision": "deny" },
+  { "name": "deployer ships staging",             "principal": "Orchard::Agent::\"deployer\"",   "action": "Orchard::Action::\"deploy\"",     "resource": "Orchard::Environment::\"staging\"", "context": { "change": "c1", "riskScore": 1 }, "decision": "allow" },
+  { "name": "merge on green",                     "principal": "Orchard::Agent::\"coder\"",      "action": "Orchard::Action::\"mergePR\"",    "resource": "Orchard::PullRequest::\"42\"", "context": { "ciPassed": true, "humanApprovals": 1 }, "decision": "allow" }
+]

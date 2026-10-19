@@ -1,0 +1,8 @@
+@0   coder RunTests.request          pr="42"
+@300 coder RunTests.response         pr="42" | passed=true
+@310 coder PushCommit.request        pr="42"   # a push starts...
+@315 coder MergePullRequest.request  pr="42"   # ...and the merge races it      -> must DENY
+@320 coder PushCommit.response       pr="42"   # the push lands
+@330 coder RunTests.request          pr="42"
+@600 coder RunTests.response         pr="42" | passed=true
+@610 coder MergePullRequest.request  pr="42"   # green on the real head          -> ALLOW

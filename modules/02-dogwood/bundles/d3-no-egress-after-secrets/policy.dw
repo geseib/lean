@@ -1,0 +1,15 @@
+// d3 — Breaking the "lethal trifecta".
+//
+// An agent that (1) reads private data, (2) sees untrusted content and
+// (3) can talk to the outside world can be prompt-injected into leaking.
+// Remove leg (3) *conditionally*: once this session has read a secret, the
+// agent loses internet egress for the rest of the day.
+
+@id("default_tools")
+permit (principal, action in Drupe::Action::"CallTool", resource);
+
+@id("no_egress_after_secret")
+forbid (principal, action == Drupe::Action::"WebFetch", resource)
+when temporal {
+    formerly within 24h Drupe::Action::"ReadSecret"::request{ input.name: * }
+};

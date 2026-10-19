@@ -1,0 +1,11 @@
+id = "lean/e1"
+title = "Warm-up proofs: rfl, cases, induction"
+type = "lean"
+project = "../.."
+file = "Exercises/E1_Basics.lean"
+solution = "Solutions/E1_Basics.lean"
+hints = [
+  "Open Exercises/E1_Basics.lean in VS Code (Lean 4 extension) and put your cursor after `by` to see the goal.",
+  "Each exercise's docstring names the tactic or lemma to reach for. The matching lesson in Course/ proves a sibling theorem: copy its shape.",
+  "Still stuck? The reference proofs are in modules/04-lean/Solutions/E1_Basics.lean.",
+]

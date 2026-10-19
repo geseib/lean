@@ -1,0 +1,21 @@
+// d6 — The PDLC -> SDLC hand-off: no code before an approved spec.
+//
+// The planner writes spec.md; a product owner approves it through
+// RequestApproval(kind = "spec"). Only then may the coder write code for
+// that feature. Specs stay valid for a week, which is longer than the
+// default 24h look-back cap, so this bundle ships an event schema
+// (events.dwschema) that raises max_window.
+
+@id("other_tools")
+permit (principal, action in Drupe::Action::"CallTool", resource)
+unless { action == Drupe::Action::"WriteCode" };
+
+@id("code_after_spec")
+permit (principal, action == Drupe::Action::"WriteCode", resource)
+when temporal {
+    formerly within 7d Drupe::Action::"RequestApproval"::response{
+        input.change: context.input.feature,
+        input.kind: "spec",
+        output.approved: true
+    }
+};

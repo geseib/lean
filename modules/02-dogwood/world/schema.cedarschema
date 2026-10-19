@@ -1,0 +1,230 @@
+namespace Drupe {
+  type DeployInput = {
+    change: String,
+    env: String
+  };
+
+  type DeployOutput = {  };
+
+  type InvokeModelInput = {
+    tokens: Long
+  };
+
+  type InvokeModelOutput = {  };
+
+  type MergePullRequestInput = {
+    pr: String
+  };
+
+  type MergePullRequestOutput = {  };
+
+  type PushCommitInput = {
+    branch?: String,
+    pr: String
+  };
+
+  type PushCommitOutput = {  };
+
+  type ReadFileInput = {
+    path: String
+  };
+
+  type ReadFileOutput = {  };
+
+  type ReadSecretInput = {
+    name: String
+  };
+
+  type ReadSecretOutput = {  };
+
+  type RequestApprovalInput = {
+    change: String,
+    kind: String
+  };
+
+  type RequestApprovalOutput = {
+    approved: Bool,
+    approver: String
+  };
+
+  type RunCommandInput = {
+    command: String
+  };
+
+  type RunCommandOutput = {  };
+
+  type RunTestsInput = {
+    pr: String
+  };
+
+  type RunTestsOutput = {
+    passed: Bool
+  };
+
+  type SystemContext = {
+    now: datetime
+  };
+
+  type WebFetchInput = {
+    url: String
+  };
+
+  type WebFetchOutput = {  };
+
+  type WriteCodeInput = {
+    feature: String,
+    path: String
+  };
+
+  type WriteCodeOutput = {  };
+
+  type WriteSpecInput = {
+    feature: String
+  };
+
+  type WriteSpecOutput = {  };
+
+  entity Gateway;
+
+  entity User;
+
+  action "CallTool" in [Action::"Mcp"] appliesTo {
+    principal: [User],
+    resource: [Gateway],
+    context: {
+      isOutput: Bool,
+      output?: {      },
+      system: SystemContext
+    }
+  };
+
+  action "Deploy" in [Action::"CallTool"] appliesTo {
+    principal: [User],
+    resource: [Gateway],
+    context: {
+      input: DeployInput,
+      output?: DeployOutput,
+      system: SystemContext
+    }
+  };
+
+  action "InvokeModel" in [Action::"CallTool"] appliesTo {
+    principal: [User],
+    resource: [Gateway],
+    context: {
+      input: InvokeModelInput,
+      output?: InvokeModelOutput,
+      system: SystemContext
+    }
+  };
+
+  action "Mcp" appliesTo {
+    principal: [User],
+    resource: [Gateway],
+    context: {
+      isOutput: Bool,
+      output?: {      },
+      system: SystemContext
+    }
+  };
+
+  action "MergePullRequest" in [Action::"CallTool"] appliesTo {
+    principal: [User],
+    resource: [Gateway],
+    context: {
+      input: MergePullRequestInput,
+      output?: MergePullRequestOutput,
+      system: SystemContext
+    }
+  };
+
+  action "PushCommit" in [Action::"CallTool"] appliesTo {
+    principal: [User],
+    resource: [Gateway],
+    context: {
+      input: PushCommitInput,
+      output?: PushCommitOutput,
+      system: SystemContext
+    }
+  };
+
+  action "ReadFile" in [Action::"CallTool"] appliesTo {
+    principal: [User],
+    resource: [Gateway],
+    context: {
+      input: ReadFileInput,
+      output?: ReadFileOutput,
+      system: SystemContext
+    }
+  };
+
+  action "ReadSecret" in [Action::"CallTool"] appliesTo {
+    principal: [User],
+    resource: [Gateway],
+    context: {
+      input: ReadSecretInput,
+      output?: ReadSecretOutput,
+      system: SystemContext
+    }
+  };
+
+  action "RequestApproval" in [Action::"CallTool"] appliesTo {
+    principal: [User],
+    resource: [Gateway],
+    context: {
+      input: RequestApprovalInput,
+      output?: RequestApprovalOutput,
+      system: SystemContext
+    }
+  };
+
+  action "RunCommand" in [Action::"CallTool"] appliesTo {
+    principal: [User],
+    resource: [Gateway],
+    context: {
+      input: RunCommandInput,
+      output?: RunCommandOutput,
+      system: SystemContext
+    }
+  };
+
+  action "RunTests" in [Action::"CallTool"] appliesTo {
+    principal: [User],
+    resource: [Gateway],
+    context: {
+      input: RunTestsInput,
+      output?: RunTestsOutput,
+      system: SystemContext
+    }
+  };
+
+  action "WebFetch" in [Action::"CallTool"] appliesTo {
+    principal: [User],
+    resource: [Gateway],
+    context: {
+      input: WebFetchInput,
+      output?: WebFetchOutput,
+      system: SystemContext
+    }
+  };
+
+  action "WriteCode" in [Action::"CallTool"] appliesTo {
+    principal: [User],
+    resource: [Gateway],
+    context: {
+      input: WriteCodeInput,
+      output?: WriteCodeOutput,
+      system: SystemContext
+    }
+  };
+
+  action "WriteSpec" in [Action::"CallTool"] appliesTo {
+    principal: [User],
+    resource: [Gateway],
+    context: {
+      input: WriteSpecInput,
+      output?: WriteSpecOutput,
+      system: SystemContext
+    }
+  };
+}

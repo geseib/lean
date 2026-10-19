@@ -1,0 +1,43 @@
+# Each [[property]] is one theorem about policies.cedar, checked by
+# `cedar symcc` for EVERY possible request and entity store of that type.
+# `must_reject` lists mutant policy sets the property has to catch:
+# a property that cannot tell a bug from the real thing proves nothing.
+
+[[property]]
+name = "No agent ever deploys to prod"
+check = "implies"
+principal = "Orchard::Agent"
+action = 'Orchard::Action::"deploy"'
+resource = "Orchard::Environment"
+policies = "policies.cedar"
+other = "bounds/no-agent-deploys-prod.cedar"
+must_reject = ["mutants/m1-hotfix-reaches-prod.cedar"]
+
+[[property]]
+name = "Agents push only to unprotected branches"
+check = "implies"
+principal = "Orchard::Agent"
+action = 'Orchard::Action::"pushBranch"'
+resource = "Orchard::Repo"
+policies = "policies.cedar"
+other = "bounds/agents-push-unprotected-only.cedar"
+must_reject = ["mutants/m2-agents-push-main.cedar"]
+
+[[property]]
+name = "Among humans, only release managers ship prod"
+check = "implies"
+principal = "Orchard::Human"
+action = 'Orchard::Action::"deploy"'
+resource = "Orchard::Environment"
+policies = "policies.cedar"
+other = "bounds/only-release-managers-ship-prod.cedar"
+must_reject = ["mutants/m3-product-owner-ships-prod.cedar"]
+
+[[property]]
+name = "No agent ever approves a PR (given to you)"
+check = "always-denies"
+principal = "Orchard::Agent"
+action = 'Orchard::Action::"approvePR"'
+resource = "Orchard::PullRequest"
+policies = "policies.cedar"
+must_reject = ["mutants/m4-reviewer-agent-approves.cedar"]

@@ -1,0 +1,6 @@
+@0     deployer Deploy.request change="c-1" env="prod"     # 1st  -> ALLOW
+@600   deployer Deploy.request change="c-2" env="prod"     # 2nd  -> ALLOW
+@900   deployer Deploy.request change="c-3" env="staging"  # not prod -> ALLOW
+@1200  deployer Deploy.request change="c-3" env="prod"     # 3rd within 1h -> DENY
+@3700  deployer Deploy.request change="c-3" env="prod"     # c-1 aged out, but c-2 + the denied attempt still count -> DENY
+@7300  deployer Deploy.request change="c-3" env="prod"     # window clear -> ALLOW

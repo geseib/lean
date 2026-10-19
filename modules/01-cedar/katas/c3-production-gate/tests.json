@@ -1,0 +1,68 @@
+[
+ {
+  "name": "deployer ships to staging",
+  "principal": "Orchard::Agent::\"deployer\"",
+  "action": "Orchard::Action::\"deploy\"",
+  "resource": "Orchard::Environment::\"staging\"",
+  "context": {
+   "change": "c-101",
+   "riskScore": 2
+  },
+  "decision": "allow"
+ },
+ {
+  "name": "deployer ships to dev",
+  "principal": "Orchard::Agent::\"deployer\"",
+  "action": "Orchard::Action::\"deploy\"",
+  "resource": "Orchard::Environment::\"dev\"",
+  "context": {
+   "change": "c-101",
+   "riskScore": 2
+  },
+  "decision": "allow"
+ },
+ {
+  "name": "deployer may NOT ship to prod",
+  "principal": "Orchard::Agent::\"deployer\"",
+  "action": "Orchard::Action::\"deploy\"",
+  "resource": "Orchard::Environment::\"prod\"",
+  "context": {
+   "change": "c-101",
+   "riskScore": 2
+  },
+  "decision": "deny"
+ },
+ {
+  "name": "coder (sdlc) may not deploy at all",
+  "principal": "Orchard::Agent::\"coder\"",
+  "action": "Orchard::Action::\"deploy\"",
+  "resource": "Orchard::Environment::\"staging\"",
+  "context": {
+   "change": "c-101",
+   "riskScore": 2
+  },
+  "decision": "deny"
+ },
+ {
+  "name": "rel (release manager) ships prod",
+  "principal": "Orchard::Human::\"rel\"",
+  "action": "Orchard::Action::\"deploy\"",
+  "resource": "Orchard::Environment::\"prod\"",
+  "context": {
+   "change": "c-101",
+   "riskScore": 2
+  },
+  "decision": "allow"
+ },
+ {
+  "name": "priya (product owner) may not ship prod",
+  "principal": "Orchard::Human::\"priya\"",
+  "action": "Orchard::Action::\"deploy\"",
+  "resource": "Orchard::Environment::\"prod\"",
+  "context": {
+   "change": "c-101",
+   "riskScore": 2
+  },
+  "decision": "deny"
+ }
+]

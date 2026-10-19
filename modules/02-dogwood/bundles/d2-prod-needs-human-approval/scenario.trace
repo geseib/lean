@@ -1,0 +1,10 @@
+@0     deployer  Deploy.request           change="c-101" env="staging"   # routine        -> ALLOW
+@60    deployer  Deploy.request           change="c-101" env="prod"      # no approval    -> DENY
+@70    deployer  RequestApproval.request  change="c-101" kind="release"  #                -> ALLOW
+@900   deployer  RequestApproval.response change="c-101" kind="release" | approved=false approver="rel-mgr"
+@910   deployer  Deploy.request           change="c-101" env="prod"      # human said no  -> DENY
+@920   deployer  RequestApproval.request  change="c-101" kind="release"
+@1800  deployer  RequestApproval.response change="c-101" kind="release" | approved=true approver="rel-mgr"
+@1810  deployer  Deploy.request           change="c-202" env="prod"      # wrong change   -> DENY
+@1820  deployer  Deploy.request           change="c-101" env="prod"      # approved       -> ALLOW
+@20000 deployer  Deploy.request           change="c-101" env="prod"      # approval stale -> DENY

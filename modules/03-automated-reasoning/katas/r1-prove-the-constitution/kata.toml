@@ -1,0 +1,9 @@
+id = "reasoning/r1"
+title = "Prove the constitution: write the properties, catch the mutants"
+type = "symcc"
+world = "01-cedar/world"
+hints = [
+  "A property `P implies B` says: every request P allows, B also allows. So B is the 'envelope' of what is acceptable.",
+  "Write each bound as a permit over (principal, action, resource) with a `when`/`unless` that states the safe region, e.g. `unless { resource.tier == \"prod\" }`.",
+  "A bound may contain several permits; their union is the envelope. For release managers: one permit below prod, one for the ReleaseManager role.",
+]

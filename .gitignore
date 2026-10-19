@@ -1,0 +1,5 @@
+.course-progress.json
+__pycache__/
+.lake/
+*.olean
+build/

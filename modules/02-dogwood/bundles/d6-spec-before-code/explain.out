@@ -1,0 +1,10 @@
+Only past events from this request's principal count.
+
+@id("other_tools")
+PERMIT any principal to perform any action in CallTool on any resource
+  unless: the action == WriteCode
+
+@id("code_after_spec")
+PERMIT any principal to perform WriteCode on any resource
+  when:
+    a RequestApproval response with change = the request's feature and kind = "spec" and output approved = true occurred within the last 7 days

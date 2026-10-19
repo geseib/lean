@@ -1,0 +1,11 @@
+id = "lean/e3"
+title = "Verify a `formerly within` monitor"
+type = "lean"
+project = "../.."
+file = "Exercises/E3_Temporal.lean"
+solution = "Solutions/E3_Temporal.lean"
+hints = [
+  "Open Exercises/E3_Temporal.lean in VS Code (Lean 4 extension) and put your cursor after `by` to see the goal.",
+  "Each exercise's docstring names the tactic or lemma to reach for. The matching lesson in Course/ proves a sibling theorem: copy its shape.",
+  "Still stuck? The reference proofs are in modules/04-lean/Solutions/E3_Temporal.lean.",
+]

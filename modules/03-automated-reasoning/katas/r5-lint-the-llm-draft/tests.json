@@ -1,0 +1,67 @@
+[
+ {
+  "name": "priya approves a spec",
+  "principal": "Orchard::Human::\"priya\"",
+  "action": "Orchard::Action::\"approveArtifact\"",
+  "resource": "Orchard::Artifact::\"dark-mode/spec.md\"",
+  "decision": "allow"
+ },
+ {
+  "name": "priya does not approve a plan",
+  "principal": "Orchard::Human::\"priya\"",
+  "action": "Orchard::Action::\"approveArtifact\"",
+  "resource": "Orchard::Artifact::\"dark-mode/plan.md\"",
+  "decision": "deny"
+ },
+ {
+  "name": "coder pushes a feature branch",
+  "principal": "Orchard::Agent::\"coder\"",
+  "action": "Orchard::Action::\"pushBranch\"",
+  "resource": "Orchard::Repo::\"web-app\"",
+  "decision": "allow",
+  "context": {
+   "branch": "feat/x"
+  }
+ },
+ {
+  "name": "coder may not push main",
+  "principal": "Orchard::Agent::\"coder\"",
+  "action": "Orchard::Action::\"pushBranch\"",
+  "resource": "Orchard::Repo::\"web-app\"",
+  "decision": "deny",
+  "context": {
+   "branch": "main"
+  }
+ },
+ {
+  "name": "intern-bot (trust 0) may not push",
+  "principal": "Orchard::Agent::\"intern-bot\"",
+  "action": "Orchard::Action::\"pushBranch\"",
+  "resource": "Orchard::Repo::\"web-app\"",
+  "decision": "deny",
+  "context": {
+   "branch": "feat/x"
+  }
+ },
+ {
+  "name": "deployer reads the internal CI token",
+  "principal": "Orchard::Agent::\"deployer\"",
+  "action": "Orchard::Action::\"readSecret\"",
+  "resource": "Orchard::Secret::\"ci-token\"",
+  "decision": "allow"
+ },
+ {
+  "name": "deployer may not read the restricted deploy token",
+  "principal": "Orchard::Agent::\"deployer\"",
+  "action": "Orchard::Action::\"readSecret\"",
+  "resource": "Orchard::Secret::\"deploy-token\"",
+  "decision": "deny"
+ },
+ {
+  "name": "coder (sdlc) may not read secrets",
+  "principal": "Orchard::Agent::\"coder\"",
+  "action": "Orchard::Action::\"readSecret\"",
+  "resource": "Orchard::Secret::\"ci-token\"",
+  "decision": "deny"
+ }
+]

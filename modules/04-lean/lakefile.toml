@@ -1,0 +1,14 @@
+name = "proof_carrying_agents"
+defaultTargets = ["Course", "Solutions"]
+
+# The lessons: read them top to bottom, every theorem is proved.
+[[lean_lib]]
+name = "Course"
+
+# Reference solutions to the exercises.
+[[lean_lib]]
+name = "Solutions"
+
+# Your workspace. These files contain `sorry` until you solve them.
+[[lean_lib]]
+name = "Exercises"

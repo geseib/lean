@@ -1,0 +1,9 @@
+# One long-lived agent session ("builder") carries a feature from spec to code.
+@0      builder WriteSpec.request       feature="dark-mode"                  # -> ALLOW
+@100    builder WriteCode.request       feature="dark-mode" path="ui.css"    # no spec approval yet -> DENY
+@200    builder RequestApproval.request change="dark-mode" kind="spec"
+@5000   builder RequestApproval.response change="dark-mode" kind="spec" | approved=true approver="po-priya"
+@5100   builder WriteCode.request       feature="dark-mode" path="ui.css"    # -> ALLOW
+@5200   builder WriteCode.request       feature="billing" path="pay.py"      # different feature -> DENY
+@400000 builder WriteCode.request       feature="dark-mode" path="ui.css"    # 4.6 days later, still valid -> ALLOW
+@700000 builder WriteCode.request       feature="dark-mode" path="ui.css"    # 8 days later, expired -> DENY

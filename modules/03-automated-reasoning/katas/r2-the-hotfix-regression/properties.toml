@@ -1,0 +1,8 @@
+[[property]]
+name = "No agent ever deploys to prod"
+check = "implies"
+principal = "Orchard::Agent"
+action = 'Orchard::Action::"deploy"'
+resource = "Orchard::Environment"
+policies = "policies.cedar"
+other = "bounds/no-agent-deploys-prod.cedar"

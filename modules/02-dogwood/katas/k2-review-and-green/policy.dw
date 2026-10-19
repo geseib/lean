@@ -1,0 +1,20 @@
+// KATA k2 — compose two histories.
+//
+// Requirement (spec.md, "Merge policy"):
+//   An agent may merge PR X only if BOTH
+//     (a) a human approved a code review of X (RequestApproval, kind = "review")
+//         within the last 24 hours, and
+//     (b) the tests passed on X with no push to X since (use the request,
+//         as you learned in k1).
+//
+// Hints: a temporal block holds ONE condition, and the only connective is &&.
+// Parenthesize a `since` when it is a conjunct.
+
+@id("allow_other_tools")
+permit (principal, action in Drupe::Action::"CallTool", resource)
+unless { action == Drupe::Action::"MergePullRequest" };
+
+// TODO: replace `when { false }` with the real rule.
+@id("merge_rule")
+permit (principal, action == Drupe::Action::"MergePullRequest", resource)
+when { false };

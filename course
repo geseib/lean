@@ -1,0 +1,558 @@
+#!/usr/bin/env python3
+"""course — the hands-on runner for "Proof-Carrying Agents".
+
+    ./course doctor               check that every tool the course needs is installed
+    ./course status               your progress across every kata
+    ./course list                 every kata with its title
+    ./course check <kata>         check YOUR work on a kata   (e.g. cedar/c1, dogwood/k2)
+    ./course check <kata> --solution   check the reference solution instead
+    ./course hint <kata>          reveal the next hint for a kata
+    ./course verify               maintainer/CI mode: every solution passes, every starter fails
+
+Katas live in modules/*/katas/*/kata.toml. Each kata has a type (cedar,
+symcc, dogwood, lean, python) and is checked by the matching real tool.
+"""
+from __future__ import annotations
+
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import tomllib
+from dataclasses import dataclass, field
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+PROGRESS = ROOT / ".course-progress.json"
+TOOLS = ROOT / "tools"
+
+# ---------------------------------------------------------------- terminal ---
+COLOR = sys.stdout.isatty() and os.environ.get("NO_COLOR") is None
+
+
+def paint(code: str, text: str) -> str:
+    return f"\033[{code}m{text}\033[0m" if COLOR else text
+
+
+def green(t): return paint("32", t)
+def red(t): return paint("31", t)
+def yellow(t): return paint("33", t)
+def dim(t): return paint("2", t)
+def bold(t): return paint("1", t)
+
+
+def run(cmd: list[str], cwd: Path | None = None, env: dict | None = None, timeout: int = 600):
+    merged = {**os.environ, **(env or {})}
+    try:
+        return subprocess.run(cmd, cwd=cwd, env=merged, capture_output=True, text=True, timeout=timeout)
+    except FileNotFoundError:
+        return subprocess.CompletedProcess(cmd, 127, "", f"command not found: {cmd[0]}")
+
+
+# ------------------------------------------------------------------ katas ----
+@dataclass
+class Kata:
+    id: str
+    title: str
+    type: str
+    path: Path
+    module: Path
+    spec: dict
+    hints: list[str] = field(default_factory=list)
+
+
+def load_katas() -> list[Kata]:
+    katas = []
+    for toml_path in sorted(ROOT.glob("modules/*/katas/*/kata.toml")):
+        spec = tomllib.loads(toml_path.read_text())
+        katas.append(Kata(
+            id=spec["id"], title=spec["title"], type=spec["type"],
+            path=toml_path.parent, module=toml_path.parent.parent.parent,
+            spec=spec, hints=spec.get("hints", []),
+        ))
+    return katas
+
+
+def find_kata(kid: str) -> Kata:
+    katas = load_katas()
+    for k in katas:
+        if k.id == kid:
+            return k
+    close = [k.id for k in katas if kid in k.id]
+    hint = f" Did you mean: {', '.join(close)}?" if close else " Run `./course list`."
+    sys.exit(red(f"no kata named {kid!r}.") + hint)
+
+
+@dataclass
+class Result:
+    ok: bool
+    lines: list[str]
+
+
+def workspace(kata: Kata, solution: bool) -> Path:
+    """A scratch copy of the kata; with --solution, solution/ is overlaid."""
+    tmp = Path(tempfile.mkdtemp(prefix="course-"))
+    dst = tmp / kata.path.name
+    shutil.copytree(kata.path, dst, ignore=shutil.ignore_patterns("solution"))
+    if solution:
+        sol = kata.path / "solution"
+        if not sol.is_dir():
+            sys.exit(red(f"{kata.id} has no solution/ directory"))
+        shutil.copytree(sol, dst, dirs_exist_ok=True)
+    return dst
+
+
+# ------------------------------------------------------------ cedar katas ----
+def uid_json(uid: str) -> dict:
+    m = re.fullmatch(r'(.+)::"(.*)"', uid)
+    if not m:
+        raise ValueError(f"bad entity uid {uid!r}; expected Type::\"id\"")
+    return {"type": m.group(1), "id": m.group(2)}
+
+
+def cedar_authorize(schema: Path, policies: Path, entities: Path, test: dict, scratch: Path):
+    req = {
+        "principal": test["principal"],
+        "action": test["action"],
+        "resource": test["resource"],
+        "context": test.get("context", {}),
+    }
+    req_file = scratch / "request.json"
+    req_file.write_text(json.dumps(req))
+    p = run(["cedar", "authorize", "--schema", str(schema), "--policies", str(policies),
+             "--entities", str(entities), "--request-json", str(req_file), "-v",
+             "--error-format", "plain"])
+    out = (p.stdout + p.stderr).strip()
+    first = next((l.strip() for l in out.splitlines() if l.strip()), "")
+    decision = first if first in ("ALLOW", "DENY") else None
+    reasons = re.findall(r"^\s{2}(\S+)\s*$", p.stdout.split("note:")[-1], re.M) if "note:" in p.stdout else []
+    errors = [l.strip() for l in out.splitlines() if l.startswith("error while evaluating")]
+    return decision, reasons, errors, out
+
+
+def check_cedar(kata: Kata, ws: Path) -> Result:
+    world = kata.module / "world"
+    schema = world / "schema.cedarschema"
+    entities = world / kata.spec.get("entities", "entities.json")
+    policies = ws / kata.spec.get("policies", "policy.cedar")
+    lines: list[str] = []
+
+    v = run(["cedar", "validate", "--schema", str(schema), "--policies", str(policies),
+             "--error-format", "human" if COLOR else "plain"])
+    if v.returncode != 0:
+        return Result(False, [red("✗ cedar validate rejected your policies:"), (v.stdout + v.stderr).rstrip()])
+    lines.append(green("✓ validates against the Orchard schema"))
+
+    tests = json.loads((ws / "tests.json").read_text())
+    passed = 0
+    for t in tests:
+        got, reasons, errors, raw = cedar_authorize(schema, policies, entities, t, ws)
+        want = t["decision"].upper()
+        why = f" ← {', '.join(reasons)}" if reasons else ""
+        if got == want:
+            passed += 1
+            lines.append(green(f"  ✓ {t['name']}: {got}") + dim(why))
+        else:
+            lines.append(red(f"  ✗ {t['name']}: expected {want}, got {got}") + dim(why))
+            for e in errors:
+                lines.append(yellow(f"      {e}"))
+            if got is None:
+                lines.append(dim("      " + raw.replace("\n", "\n      ")))
+    lines.append(f"{passed}/{len(tests)} authorization tests pass")
+    return Result(passed == len(tests), lines)
+
+
+# ------------------------------------------------------------ symcc katas ----
+SYMCC_FILE_ARGS = {
+    # check -> how its policy files are passed
+    "never-errors": ["-p"], "always-matches": ["-p"], "never-matches": ["-p"],
+    "always-allows": ["-p"], "always-denies": ["-p"],
+    "matches-equivalent": ["--policy1", "--policy2"], "matches-implies": ["--policy1", "--policy2"],
+    "matches-disjoint": ["--policy1", "--policy2"],
+    "equivalent": ["--policies1", "--policies2"], "implies": ["--policies1", "--policies2"],
+    "disjoint": ["--policies1", "--policies2"],
+}
+
+
+def solver_path() -> str | None:
+    """SymCC needs cvc5 (its encoding uses cvc5's finite-set theory)."""
+    if os.environ.get("CVC5"):
+        return os.environ["CVC5"]
+    if shutil.which("cvc5"):
+        return shutil.which("cvc5")
+    if run(["python3", "-c", "import cvc5"]).returncode == 0:
+        return str(TOOLS / "cvc5-py")
+    return None
+
+
+def extract_policy(src: Path, policy_id: str, scratch: Path) -> Path:
+    """Single-policy analyses need a file holding exactly one policy."""
+    text = src.read_text()
+    chunks = re.split(r'(?m)^(?=@id\()', text)
+    for chunk in chunks:
+        if chunk.startswith(f'@id("{policy_id}")'):
+            out = scratch / f"policy-{policy_id}.cedar"
+            out.write_text(chunk)
+            return out
+    raise ValueError(f'no policy @id("{policy_id}") in {src.name}')
+
+
+def symcc(prop: dict, ws: Path, files: list[Path], world: Path):
+    solver = solver_path()
+    if solver is None:
+        return None, "no cvc5 solver: pip install cvc5 (or set CVC5=/path/to/cvc5)"
+    cmd = ["cedar", "symcc", "--cvc5-path", solver,
+           "--principal-type", prop["principal"], "--action", prop["action"],
+           "--resource-type", prop["resource"],
+           "--schema", str(world / "schema.cedarschema"), "--error-format", "plain",
+           prop["check"]]
+    for flag, f in zip(SYMCC_FILE_ARGS[prop["check"]], files):
+        cmd += [flag, str(f)]
+    p = run(cmd, cwd=ws, timeout=300)
+    out = (p.stdout + p.stderr).strip()
+    if "VERIFIED" in out:
+        return True, out
+    if "DOES NOT HOLD" in out:
+        return False, out
+    return None, out
+
+
+def describe_counterexample(out: str) -> list[str]:
+    """The request plus the attributes of its principal and resource."""
+    cex = out.split("Counterexample found:", 1)[-1].strip()
+    lines = cex.splitlines()
+    if not lines:
+        return []
+    shown = ["counterexample: " + lines[0].strip()]
+    if len(lines) > 1 and lines[1].startswith("context"):
+        shown.append("  " + lines[1].strip())
+    uids = re.findall(r"(?:principal|resource): ([^,]+::\"[^\"]*\")", lines[0])
+    for uid in uids:
+        m = re.search(r"^\s*" + re.escape(uid) + r" \{\n(.*?)^\s*\},?$", cex, re.M | re.S)
+        if m:
+            attrs = " ".join(a.strip() for a in m.group(1).splitlines()).rstrip(",")
+            shown.append(f"  {uid} {{ {attrs} }}")
+    return shown
+
+
+def symcc_files(prop: dict, ws: Path, policies_override: Path | None = None) -> list[Path]:
+    names = [prop["policies"]] + ([prop["other"]] if "other" in prop else [])
+    files = [ws / n for n in names]
+    if policies_override is not None:
+        files[0] = policies_override
+    ids = [prop.get("policy_id"), prop.get("other_policy_id")]
+    return [extract_policy(f, pid, ws) if pid else f for f, pid in zip(files, ids)]
+
+
+def check_symcc(kata: Kata, ws: Path) -> Result:
+    world = (kata.module.parent / kata.spec["world"]).resolve() if "world" in kata.spec else kata.module / "world"
+    props = tomllib.loads((ws / "properties.toml").read_text())["property"]
+    lines, ok = [], True
+
+    # Optional concrete tests keep a "fix" honest: you cannot prove a property
+    # by deleting the feature.
+    if (ws / "tests.json").exists():
+        sub = Kata(kata.id, kata.title, "cedar", kata.path, world.parent, {"policies": kata.spec.get("policies", "policies.cedar")})
+        r = check_cedar(sub, ws)
+        lines += r.lines
+        ok &= r.ok
+
+    for prop in props:
+        want = prop.get("expect", "holds") == "holds"
+        try:
+            got, out = symcc(prop, ws, symcc_files(prop, ws), world)
+        except (ValueError, FileNotFoundError) as err:
+            got, out = None, str(err)
+        label = f"{prop['name']}  {dim('[' + prop['check'] + ']')}"
+        if got is None:
+            ok = False
+            lines.append(red(f"  ✗ {label}: analysis could not run"))
+            lines.append(dim("      " + out.replace("\n", "\n      ")))
+            continue
+        verdict = "holds" if got else "does not hold"
+        if got == want:
+            lines.append(green(f"  ✓ {label}: {verdict}"))
+        else:
+            ok = False
+            lines.append(red(f"  ✗ {label}: {verdict} (wanted: {prop.get('expect', 'holds')})"))
+            if not got:
+                lines += [yellow("      " + l) for l in describe_counterexample(out)]
+
+        # Mutation testing: a property worth having must REJECT a known-bad
+        # policy set. A bound like `permit(principal, action, resource);`
+        # "holds" for everything, so it would be caught here.
+        for mutant in prop.get("must_reject", []):
+            try:
+                mfiles = symcc_files(prop, ws, ws / mutant)
+                mgot, _ = symcc(prop, ws, mfiles, world)
+            except (ValueError, FileNotFoundError) as err:
+                mgot = None
+                lines.append(dim(f"      {err}"))
+            if mgot is False:
+                lines.append(green(f"      ✓ catches the bug in {mutant}"))
+            else:
+                ok = False
+                lines.append(red(f"      ✗ is too weak: it does not catch the bug in {mutant}"))
+    return Result(ok, lines)
+
+
+# ---------------------------------------------------------- dogwood katas ----
+VERDICT = re.compile(r"^@(\d+) \(time point \d+\): (ALLOW|DENY)")
+
+
+def verdicts(text: str) -> dict[str, str]:
+    return {m.group(1): m.group(2) for m in map(VERDICT.match, text.splitlines()) if m}
+
+
+def check_dogwood(kata: Kata, ws: Path) -> Result:
+    world = kata.module / "world"
+    policy = ws / "policy.dw"
+    schema = world / "schema.cedarschema"
+    extra = ["--event-schema", str(ws / "events.dwschema")] if (ws / "events.dwschema").exists() else []
+    lines = []
+
+    t = run([sys.executable, str(TOOLS / "dwtrace.py"), str(ws / "scenario.trace")])
+    if t.returncode != 0:
+        return Result(False, [red("✗ scenario.trace did not compile:"), t.stderr.rstrip()])
+    (ws / "trace.log").write_text(t.stdout)
+
+    v = run(["dogwood", "validate", str(policy), "--policy-schema", str(schema), *extra])
+    if v.returncode != 0:
+        return Result(False, [red("✗ dogwood validate rejected your policy:"), (v.stdout + v.stderr).rstrip()])
+    lines.append(green("✓ validates against the tool schema (world/schema.cedarschema)"))
+
+    r = run(["dogwood", "replay", str(policy), "--policy-schema", str(schema),
+             "--trace", str(ws / "trace.log"), *extra])
+    if r.returncode != 0:
+        return Result(False, lines + [red("✗ replay failed:"), (r.stdout + r.stderr).rstrip()])
+    got = verdicts(r.stdout)
+    want = verdicts((ws / "expected.out").read_text())
+
+    notes = {}
+    for line in (ws / "scenario.trace").read_text().splitlines():
+        m = re.match(r"^@(\d+)\s.*?#\s*(.*)$", line.strip())
+        if m:
+            notes[m.group(1)] = m.group(2)
+    passed = 0
+    for ts, w in want.items():
+        g = got.get(ts, "—")
+        note = dim(f"  # {notes[ts]}") if ts in notes else ""
+        if g == w:
+            passed += 1
+            lines.append(green(f"  ✓ @{ts:<7} {g}") + note)
+        else:
+            lines.append(red(f"  ✗ @{ts:<7} expected {w}, got {g}") + note)
+    lines.append(f"{passed}/{len(want)} decision points match")
+    return Result(passed == len(want), lines)
+
+
+# ------------------------------------------------------------- lean katas ----
+def lean_cmd() -> list[str] | None:
+    if shutil.which("lake"):
+        return ["lake"]
+    elan_lake = Path.home() / ".elan" / "bin" / "lake"
+    return [str(elan_lake)] if elan_lake.exists() else None
+
+
+def check_lean(kata: Kata, ws: Path, solution: bool) -> Result:
+    project = (kata.path / kata.spec["project"]).resolve()
+    rel = kata.spec["solution"] if solution else kata.spec["file"]
+    lake = lean_cmd()
+    if lake is None:
+        return Result(False, [red("✗ lake not found: see docs/setup.md to install Lean")])
+    b = run([*lake, "build", "Course"], cwd=project, timeout=3600)
+    if b.returncode != 0:
+        return Result(False, [red("✗ the Course library itself does not build:"), (b.stdout + b.stderr).rstrip()])
+    p = run([*lake, "env", "lean", rel], cwd=project, timeout=900)
+    out = (p.stdout + p.stderr).strip()
+    lines = []
+    errors = [l for l in out.splitlines() if ": error" in l]
+    sorries = [l for l in out.splitlines() if "declaration uses 'sorry'" in l]
+    if p.returncode != 0 or errors:
+        lines.append(red(f"✗ Lean rejected {rel}:"))
+        lines.append(out)
+        return Result(False, lines)
+    if sorries:
+        lines.append(yellow(f"… {rel} compiles, but {len(sorries)} proof(s) still use `sorry`:"))
+        lines += [dim("    " + s) for s in sorries]
+        return Result(False, lines)
+    lines.append(green(f"✓ every theorem in {rel} is proved — the Lean kernel checked it"))
+    return Result(True, lines)
+
+
+# ----------------------------------------------------------- python katas ----
+def check_python(kata: Kata, ws: Path) -> Result:
+    test = ws / kata.spec.get("test", "check.py")
+    p = run([sys.executable, str(test)], cwd=ws, env={"PYTHONPATH": str(ws), "COURSE_ROOT": str(ROOT)}, timeout=600)
+    out = (p.stdout + p.stderr).rstrip()
+    return Result(p.returncode == 0, [out] if out else [])
+
+
+def check(kata: Kata, solution: bool) -> Result:
+    ws = workspace(kata, solution)
+    try:
+        if kata.type == "cedar":
+            return check_cedar(kata, ws)
+        if kata.type == "symcc":
+            return check_symcc(kata, ws)
+        if kata.type == "dogwood":
+            return check_dogwood(kata, ws)
+        if kata.type == "lean":
+            return check_lean(kata, ws, solution)
+        if kata.type == "python":
+            return check_python(kata, ws)
+        return Result(False, [red(f"unknown kata type {kata.type}")])
+    finally:
+        shutil.rmtree(ws.parent, ignore_errors=True)
+
+
+# --------------------------------------------------------------- progress ----
+def load_progress() -> dict:
+    try:
+        return json.loads(PROGRESS.read_text())
+    except (OSError, ValueError):
+        return {"solved": [], "hints": {}}
+
+
+def save_progress(p: dict) -> None:
+    PROGRESS.write_text(json.dumps(p, indent=2, sort_keys=True))
+
+
+# --------------------------------------------------------------- commands ----
+def cmd_check(args: list[str]) -> int:
+    if not args:
+        sys.exit("usage: ./course check <kata> [--solution]")
+    solution = "--solution" in args
+    kata = find_kata(next(a for a in args if not a.startswith("--")))
+    print(bold(f"{kata.id} — {kata.title}") + (dim("  (reference solution)") if solution else ""))
+    res = check(kata, solution)
+    for line in res.lines:
+        print(line)
+    if res.ok:
+        print(green(bold("\nPASS")) + (" — nice work. Next: `./course status`" if not solution else ""))
+        if not solution:
+            p = load_progress()
+            if kata.id not in p["solved"]:
+                p["solved"].append(kata.id)
+                save_progress(p)
+    else:
+        print(red(bold("\nNOT YET")) + dim(f"  — stuck? `./course hint {kata.id}`"))
+    return 0 if res.ok else 1
+
+
+def cmd_status(_args) -> int:
+    p = load_progress()
+    katas = load_katas()
+    current = None
+    print(bold("Proof-Carrying Agents — your progress\n"))
+    for k in katas:
+        mod = k.module.name
+        if mod != current:
+            current = mod
+            title = (k.module / "README.md").read_text().splitlines()[0].lstrip("# ") if (k.module / "README.md").exists() else mod
+            print(bold(title))
+        mark = green("✓") if k.id in p["solved"] else dim("·")
+        print(f"  {mark} {k.id:<22} {k.title}")
+    n = sum(k.id in p["solved"] for k in katas)
+    bar = "█" * round(24 * n / max(len(katas), 1))
+    print(f"\n{n}/{len(katas)} katas  {green(bar)}{dim('░' * (24 - len(bar)))}")
+    return 0
+
+
+def cmd_list(_args) -> int:
+    for k in load_katas():
+        print(f"{k.id:<22} {dim(k.type):<8} {k.title}")
+    return 0
+
+
+def cmd_hint(args: list[str]) -> int:
+    if not args:
+        sys.exit("usage: ./course hint <kata>")
+    kata = find_kata(args[0])
+    p = load_progress()
+    shown = p["hints"].get(kata.id, 0)
+    if not kata.hints:
+        print("This kata has no hints — read its README.md.")
+        return 0
+    shown = min(shown + 1, len(kata.hints))
+    p["hints"][kata.id] = shown
+    save_progress(p)
+    for i, h in enumerate(kata.hints[:shown], 1):
+        print(f"{yellow(f'hint {i}/{len(kata.hints)}')}  {h}")
+    if shown == len(kata.hints):
+        print(dim(f"\n(that's every hint; the reference is in {kata.path.relative_to(ROOT)}/solution/)"))
+    return 0
+
+
+def cmd_verify(args: list[str]) -> int:
+    """Every solution must pass and every starter must fail (or the kata teaches nothing)."""
+    only = set(args)
+    bad = 0
+    for k in load_katas():
+        if only and not any(k.id.startswith(o) for o in only):
+            continue
+        sol = check(k, solution=True)
+        start = check(k, solution=False)
+        good = sol.ok and not start.ok
+        status = green("ok  ") if good else red("FAIL")
+        detail = "" if good else f"  solution={'pass' if sol.ok else 'FAIL'} starter={'FAIL (good)' if not start.ok else 'PASSES (kata is trivial)'}"
+        print(f"{status} {k.id:<22} {k.title}{detail}")
+        if not sol.ok:
+            print("\n".join("      " + l for l in sol.lines))
+        bad += not good
+    print(green("\nall katas verified") if not bad else red(f"\n{bad} kata(s) failed verification"))
+    return 1 if bad else 0
+
+
+def cmd_doctor(_args) -> int:
+    print(bold("Checking your toolchain\n"))
+    ok = True
+
+    def report(name, good, detail, fix):
+        nonlocal ok
+        ok &= good
+        print(f"  {green('✓') if good else red('✗')} {name:<10} {detail if good else red(detail)}")
+        if not good:
+            print(dim(f"      fix: {fix}"))
+
+    p = run(["cedar", "--version"])
+    report("cedar", p.returncode == 0, p.stdout.strip() or "not found",
+           "cargo install cedar-policy-cli --locked --features analyze")
+    if p.returncode == 0:
+        s = run(["cedar", "symcc", "--help"])
+        report("symcc", "always-denies" in s.stdout, "cedar symcc (automated reasoning) available" if "always-denies" in s.stdout else "cedar was built without the analyze feature",
+               "cargo install cedar-policy-cli --locked --features analyze --force")
+    sv = solver_path()
+    report("solver", sv is not None, f"SMT solver: {sv}" if sv else "no cvc5 or z3 found",
+           "pip install cvc5   (or install the cvc5 binary and set CVC5=/path/to/cvc5)")
+    p = run(["dogwood", "--version"])
+    report("dogwood", p.returncode == 0, p.stdout.strip() or "not found", "scripts/setup.sh (builds the Dogwood CLI from source)")
+    lake = lean_cmd()
+    p = run([*lake, "--version"]) if lake else None
+    report("lean", bool(p and p.returncode == 0), p.stdout.strip() if p and p.returncode == 0 else "lake not found",
+           "curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh")
+    try:
+        import z3  # noqa: F401
+        report("z3 (py)", True, "python z3 bindings importable", "")
+    except ImportError:
+        report("z3 (py)", False, "python z3 bindings missing", "pip install z3-solver")
+    print(green("\nAll set. Start with modules/00-orientation/README.md") if ok else yellow("\nFix the items above, then run ./course doctor again."))
+    return 0 if ok else 1
+
+
+COMMANDS = {"check": cmd_check, "status": cmd_status, "list": cmd_list,
+            "hint": cmd_hint, "verify": cmd_verify, "doctor": cmd_doctor}
+
+
+def main() -> int:
+    if len(sys.argv) < 2 or sys.argv[1] not in COMMANDS:
+        print(__doc__)
+        return 0 if len(sys.argv) < 2 else 1
+    return COMMANDS[sys.argv[1]](sys.argv[2:])
+
+
+if __name__ == "__main__":
+    sys.exit(main())

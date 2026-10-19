@@ -1,0 +1,8 @@
+id = "cedar/c2"
+title = "Separation of duties: the author never approves"
+type = "cedar"
+hints = [
+  "You need `forbid` policies: a forbid that matches always beats every permit.",
+  "Compare entities directly: `when { resource.driver == principal }`.",
+  "Merging reads the request context: `context.ciPassed && context.humanApprovals >= 1`.",
+]

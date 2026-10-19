@@ -1,0 +1,5 @@
+@0 (time point 0): ALLOW  [rules: 0]
+@310 (time point 1): ALLOW  [rules: 0]
+@315 (time point 2): DENY
+@330 (time point 3): ALLOW  [rules: 0]
+@610 (time point 4): ALLOW  [rules: 1]

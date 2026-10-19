@@ -1,0 +1,12 @@
+@0    coder PushCommit.request  pr="5"                  # -> ALLOW
+@60   coder RunTests.response   pr="5" | passed=false   # failure 1
+@120  coder PushCommit.request  pr="5"                  # -> ALLOW
+@180  coder RunTests.response   pr="5" | passed=false   # failure 2
+@240  coder PushCommit.request  pr="5"                  # -> ALLOW
+@300  coder RunTests.response   pr="5" | passed=false   # failure 3
+@360  coder PushCommit.request  pr="5"                  # stuck in a loop     -> DENY
+@370  coder PushCommit.request  pr="6"                  # other PR unaffected -> ALLOW
+@380  coder RequestApproval.request  change="5" kind="unblock"   # escalate -> ALLOW
+@900  coder RequestApproval.response change="5" kind="unblock" | approved=true approver="lead-sam"
+@910  coder PushCommit.request  pr="5"                  # human unblocked     -> ALLOW
+@4000 coder PushCommit.request  pr="5"                  # failures aged out   -> ALLOW

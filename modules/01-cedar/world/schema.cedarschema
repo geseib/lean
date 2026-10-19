@@ -1,0 +1,56 @@
+// The Orchard world: an agentic software organization.
+//
+// Agents do the work at every lifecycle stage; humans hold the gates.
+//   PDLC (product)   : the planner agent drafts intent.md / spec.md
+//   SDLC (software)  : the coder agent builds, the reviewer agent critiques
+//   Ops / release    : the deployer agent ships
+// Humans belong to Roles (ProductOwner, CodeOwner, ReleaseManager).
+namespace Orchard {
+  entity Role;
+  entity Team;
+
+  // `stage` says which part of the lifecycle an agent works in:
+  // "pdlc" | "sdlc" | "ops".  `trust` is 0..3 (3 = most trusted).
+  entity Agent in [Team] = { stage: String, trust: Long };
+  entity Human in [Role, Team] = { email: String };
+
+  // intent | spec | plan — the artifact chain of the AI-native SDLC.
+  entity Artifact = { kind: String, feature: String };
+
+  entity Repo = { protectedBranches: Set<String> };
+
+  // Every PR is written by an agent and driven by an accountable human.
+  entity PullRequest = { repo: Repo, author: Agent, driver: Human, labels: Set<String> };
+
+  // tier: "dev" | "staging" | "prod"
+  entity Environment = { tier: String };
+  entity Secret = { classification: String };
+
+  action draftArtifact appliesTo {
+    principal: [Agent], resource: [Artifact]
+  };
+  action approveArtifact appliesTo {
+    principal: [Agent, Human], resource: [Artifact]
+  };
+  action pushBranch appliesTo {
+    principal: [Agent, Human], resource: [Repo],
+    context: { branch: String }
+  };
+  action commentPR appliesTo {
+    principal: [Agent, Human], resource: [PullRequest]
+  };
+  action approvePR appliesTo {
+    principal: [Agent, Human], resource: [PullRequest]
+  };
+  action mergePR appliesTo {
+    principal: [Agent, Human], resource: [PullRequest],
+    context: { ciPassed: Bool, humanApprovals: Long }
+  };
+  action deploy appliesTo {
+    principal: [Agent, Human], resource: [Environment],
+    context: { change: String, riskScore: Long }
+  };
+  action readSecret appliesTo {
+    principal: [Agent, Human], resource: [Secret]
+  };
+}

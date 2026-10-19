@@ -1,0 +1,9 @@
+id = "reasoning/r4"
+title = "Refactor without fear: prove the new policies equivalent"
+type = "symcc"
+world = "01-cedar/world"
+hints = [
+  "Read each counterexample: the solver picks values no test author thought of, like tier \"\" or trust 2.",
+  "In the schema `tier` is a String, not an enum. `tier != \"prod\"` admits every other string; the original admits exactly dev and staging.",
+  "Use set membership to say exactly which tiers: `[\"dev\", \"staging\"].contains(resource.tier)`. Check `>` against `>=` too.",
+]

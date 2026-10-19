@@ -1,0 +1,17 @@
+// d4 — Blast-radius control: at most 2 prod deploy *attempts* per hour.
+//
+// The current request is already in the history when it is decided, so
+// "more than 2 including this one" means the 3rd attempt is refused.
+// Counting *requests* (not responses) means in-flight deploys count too.
+
+@id("deploys")
+permit (principal, action == Drupe::Action::"Deploy", resource);
+
+@id("prod_rate_limit")
+forbid (principal, action == Drupe::Action::"Deploy", resource)
+when { context.input.env == "prod" }
+when temporal {
+    bind(n,
+         count_within(1h, Drupe::Action::"Deploy"::request{ input.change: *, input.env: "prod" }),
+         n > 2)
+};

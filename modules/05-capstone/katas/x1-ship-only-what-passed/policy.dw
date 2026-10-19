@@ -1,0 +1,51 @@
+// KATA x1 — the session constitution from guard/policy.dw. Add one rule:
+//
+//   "ship-only-what-passed": a Deploy (to any env) is forbidden unless the
+//   tests passed on that branch within the last hour.
+//
+// guard.py keys Deploy by `change` and RunTests by `pr`, both = the git branch.
+//
+// The constitution for a Claude Code session, enforced by guard.py.
+// Plain Cedar rules and Dogwood temporal rules live side by side: any Cedar
+// policy is also a Dogwood policy.
+
+// A coding agent is general purpose: allow tool calls unless a rule below forbids.
+@id("general-purpose-agent")
+permit (principal, action in Drupe::Action::"CallTool", resource);
+
+// --- point-in-time (pure Cedar) ---------------------------------------------
+// Agents act up to the production gate, never through it.
+@id("never-deploy-prod")
+forbid (principal, action == Drupe::Action::"Deploy", resource)
+when { context.input.env == "prod" };
+
+// Protected branches only change through reviewed PRs.
+@id("never-push-main")
+forbid (principal, action == Drupe::Action::"PushCommit", resource)
+when { context.input has branch && ["main", "master", "release"].contains(context.input.branch) };
+
+// --- history-aware (Dogwood) -------------------------------------------------
+// Lethal trifecta: once this session has touched a secret, no more egress today.
+@id("no-egress-after-secret")
+forbid (principal, action == Drupe::Action::"WebFetch", resource)
+when temporal {
+    formerly within 24h Drupe::Action::"ReadSecret"::request{ input.name: * }
+};
+
+// Merge only if tests passed on this branch with no push since.
+@id("merge-on-green-head")
+forbid (principal, action == Drupe::Action::"MergePullRequest", resource)
+unless temporal {
+    !Drupe::Action::"PushCommit"::request{ input.pr: context.input.pr }
+    since within 24h
+    Drupe::Action::"RunTests"::response{ input.pr: context.input.pr, output.passed: true }
+};
+
+// Runaway-loop breaker: 3 red test runs on a branch in an hour stops pushes to it.
+@id("loop-breaker")
+forbid (principal, action == Drupe::Action::"PushCommit", resource)
+when temporal {
+    bind(n,
+         count_within(1h, Drupe::Action::"RunTests"::response{ input.pr: context.input.pr, output.passed: false }),
+         n >= 3)
+};

@@ -1,0 +1,11 @@
+id = "lean/e2"
+title = "Prove things about every policy set"
+type = "lean"
+project = "../.."
+file = "Exercises/E2_Authorization.lean"
+solution = "Solutions/E2_Authorization.lean"
+hints = [
+  "Open Exercises/E2_Authorization.lean in VS Code (Lean 4 extension) and put your cursor after `by` to see the goal.",
+  "Each exercise's docstring names the tactic or lemma to reach for. The matching lesson in Course/ proves a sibling theorem: copy its shape.",
+  "Still stuck? The reference proofs are in modules/04-lean/Solutions/E2_Authorization.lean.",
+]

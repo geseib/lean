@@ -1,0 +1,8 @@
+id = "dogwood/k3"
+title = "Break a runaway agent loop, with a human override"
+type = "dogwood"
+hints = [
+  "Shape: `forbid (principal, action == Drupe::Action::\"PushCommit\", resource) when temporal { ... } unless temporal { ... };`",
+  "Count failures with `bind(n, count_within(1h, Drupe::Action::\"RunTests\"::response{ input.pr: context.input.pr, output.passed: false }), n >= 3)`.",
+  "The override is a `formerly within 1h` over a RequestApproval response with kind \"unblock\" for the same pr.",
+]

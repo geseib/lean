@@ -1,0 +1,8 @@
+[[property]]
+name = "The risk gate never errors"
+check = "never-errors"
+principal = "Orchard::Agent"
+action = 'Orchard::Action::"deploy"'
+resource = "Orchard::Environment"
+policies = "policies.cedar"
+policy_id = "risk-gate"

@@ -1,0 +1,9 @@
+Only past events from this request's principal count.
+
+@id("models")
+PERMIT any principal to perform InvokeModel on any resource
+
+@id("hourly_token_budget")
+FORBID any principal to perform InvokeModel on any resource
+  when:
+    the total tokens of InvokeModel requests within the last 1 hour > 50000

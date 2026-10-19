@@ -1,0 +1,9 @@
+id = "capstone/x1"
+title = "Extend the live guard: ship only what passed"
+type = "python"
+test = "check.py"
+hints = [
+  "Copy the shape of `merge-on-green-head`: a forbid on Deploy with an `unless temporal { ... }`.",
+  "You want `formerly within 1h` a RunTests response with `output.passed: true` for the same branch. Deploy's input calls it `change`, RunTests calls it `pr`: `input.pr: context.input.change`.",
+  "Keep every existing rule: the check replays the full capstone session too.",
+]

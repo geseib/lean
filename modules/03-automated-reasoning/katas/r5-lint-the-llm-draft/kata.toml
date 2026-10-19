@@ -1,0 +1,10 @@
+id = "reasoning/r5"
+title = "Lint an LLM's draft: dead, blanket, and shadowed policies"
+type = "symcc"
+world = "01-cedar/world"
+policies = "policies.cedar"
+hints = [
+  "A condition that requires kind to equal two different strings at once can never be true: that is what `never-matches` proves.",
+  "`x >= 2 || x < 2` is true for every x, so the policy matches every request. The intent also mentions protected branches.",
+  "`... || principal is Orchard::Agent` makes the forbid cover every agent request, so it shadows the ops permit completely. Keep only the restricted clause.",
+]

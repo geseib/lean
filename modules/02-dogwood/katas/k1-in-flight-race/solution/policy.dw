@@ -1,0 +1,17 @@
+// SOLUTION k1 — count the push *request*: an attempt is enough to taint the tested head.
+
+@id("allow_other_tools")
+permit (principal, action in Drupe::Action::"CallTool", resource)
+unless { action == Drupe::Action::"MergePullRequest" };
+
+@id("merge_on_green_head")
+permit (
+    principal,
+    action == Drupe::Action::"MergePullRequest",
+    resource
+)
+when temporal {
+    !Drupe::Action::"PushCommit"::request{ input.pr: context.input.pr }
+    since within 24h
+    Drupe::Action::"RunTests"::response{ input.pr: context.input.pr, output.passed: true }
+};

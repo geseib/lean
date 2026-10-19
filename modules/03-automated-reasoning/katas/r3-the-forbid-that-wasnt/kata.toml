@@ -1,0 +1,10 @@
+id = "reasoning/r3"
+title = "The forbid that wasn't: errors are skipped, so prove they can't happen"
+type = "symcc"
+world = "01-cedar/world"
+policies = "policies.cedar"
+hints = [
+  "Run the check. One test fails: the largest risk score is ALLOWED. The yellow line says why.",
+  "Cedar skips a policy whose condition errors. For a forbid, 'skipped' means 'does not deny'.",
+  "Rewrite the condition so it cannot overflow but keeps the same threshold: riskScore * 1000 > 5000 is the same as riskScore > 5.",
+]

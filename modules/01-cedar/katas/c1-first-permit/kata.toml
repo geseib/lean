@@ -1,0 +1,8 @@
+id = "cedar/c1"
+title = "First permits: who may draft and approve product artifacts"
+type = "cedar"
+hints = [
+  "A policy has a scope `(principal, action, resource)` and optional `when { ... }` conditions.",
+  "Use `principal is Orchard::Agent` to match a type, and `principal in Orchard::Role::\"ProductOwner\"` to match group membership.",
+  "Attributes are read with dots: `principal.stage == \"pdlc\"`, `resource.kind == \"spec\"`. `||` is allowed inside a condition.",
+]

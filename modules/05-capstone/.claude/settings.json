@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash|Read|Edit|Write|MultiEdit|NotebookEdit|WebFetch|WebSearch",
+        "hooks": [ { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/guard/guard.py\"" } ] }
+    ],
+    "PostToolUse": [
+      { "matcher": "Bash|Read|Edit|Write|MultiEdit|NotebookEdit|WebFetch|WebSearch",
+        "hooks": [ { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/guard/guard.py\"" } ] }
+    ],
+    "PostToolUseFailure": [
+      { "matcher": "Bash",
+        "hooks": [ { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/guard/guard.py\"" } ] }
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+// d5 — ADLC cost governance: a sub-agent token budget.
+//
+// A session may request at most 50,000 model tokens per rolling hour,
+// counting the request being decided (it is in the history already).
+
+@id("models")
+permit (principal, action == Drupe::Action::"InvokeModel", resource);
+
+@id("hourly_token_budget")
+forbid (principal, action == Drupe::Action::"InvokeModel", resource)
+when temporal {
+    bind(total,
+         sum_within(t, 1h, Drupe::Action::"InvokeModel"::request{ input.tokens: t }),
+         total > 50000)
+};

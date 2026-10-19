@@ -1,0 +1,29 @@
+// The default (principal-pinned) event schema, with the look-back cap raised
+// from 24h to 14 days. Supplying --event-schema replaces the built-in
+// default, so every kind is spelled out.
+max_window = 14d
+
+decision event <A>::request {
+    ...inputs(A),
+    pin callerPrincipal: principalType(A) = principal,
+    callerResource:    resourceType(A),
+    requestId:         String,
+    sessionId:         String,
+}
+
+event <A>::response {
+    ...inputs(A),
+    ...outputs(A),
+    pin callerPrincipal: principalType(A) = principal,
+    callerResource:    resourceType(A),
+    requestId:         String,
+    sessionId:         String,
+}
+
+event <A>::error {
+    ...inputs(A),
+    pin callerPrincipal: principalType(A) = principal,
+    callerResource:    resourceType(A),
+    requestId:         String,
+    sessionId:         String,
+}

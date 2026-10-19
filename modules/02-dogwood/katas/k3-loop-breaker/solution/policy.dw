@@ -1,0 +1,19 @@
+// SOLUTION k3 — a counted forbid with a human override.
+
+@id("tools")
+permit (principal, action in Drupe::Action::"CallTool", resource);
+
+@id("loop_breaker")
+forbid (principal, action == Drupe::Action::"PushCommit", resource)
+when temporal {
+    bind(n,
+         count_within(1h, Drupe::Action::"RunTests"::response{ input.pr: context.input.pr, output.passed: false }),
+         n >= 3)
+}
+unless temporal {
+    formerly within 1h Drupe::Action::"RequestApproval"::response{
+        input.change: context.input.pr,
+        input.kind: "unblock",
+        output.approved: true
+    }
+};

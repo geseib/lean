@@ -1,0 +1,11 @@
+Only past events from this request's principal count.
+
+@id("allow_other_tools")
+PERMIT any principal to perform any action in CallTool on any resource
+  unless: the action == MergePullRequest
+
+@id("merge_on_green_head")
+PERMIT any principal to perform MergePullRequest on any resource
+  when:
+    a RunTests response with this request's pr and output passed = true occurred within the last 24 hours
+    and no PushCommit response for that pr has occurred since then

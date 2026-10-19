@@ -1,0 +1,10 @@
+Only past events from this request's principal count.
+
+@id("deploys")
+PERMIT any principal to perform Deploy on any resource
+
+@id("prod_rate_limit")
+FORBID any principal to perform Deploy on any resource
+  when: the request's env == "prod"
+  when:
+    the number of Deploy requests with any change and env = "prod" within the last 1 hour > 2

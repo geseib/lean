@@ -1,0 +1,25 @@
+// KATA k1 — the in-flight race.
+//
+// This is bundle d1, which passed its own scenario. But agents issue tool
+// calls in parallel: a PushCommit *request* can be in flight when the merge
+// is decided, because its *response* has not arrived yet.
+//
+// Run `./course check dogwood/k1` and watch the merge at @315 get ALLOWed
+// while a push is still in flight. Change ONE token so it is DENYed, without
+// breaking the merge at @610.
+
+@id("allow_other_tools")
+permit (principal, action in Drupe::Action::"CallTool", resource)
+unless { action == Drupe::Action::"MergePullRequest" };
+
+@id("merge_on_green_head")
+permit (
+    principal,
+    action == Drupe::Action::"MergePullRequest",
+    resource
+)
+when temporal {
+    !Drupe::Action::"PushCommit"::response{ input.pr: context.input.pr }
+    since within 24h
+    Drupe::Action::"RunTests"::response{ input.pr: context.input.pr, output.passed: true }
+};

@@ -1,0 +1,14 @@
+Only past events from this request's principal count.
+
+@id("deploy_below_prod")
+PERMIT any principal to perform Deploy on any resource
+  when: the request's env != "prod"
+
+@id("deploy_prod_after_release_approval")
+PERMIT any principal to perform Deploy on any resource
+  when: the request's env == "prod"
+  when:
+    a RequestApproval response with this request's change and kind = "release" and output approved = true occurred within the last 4 hours
+
+@id("may_ask")
+PERMIT any principal to perform RequestApproval on any resource

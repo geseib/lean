@@ -1,0 +1,22 @@
+// d1 — "Merge only on green, and only on the head that was tested."
+//
+// Requirement (from spec.md): an agent may merge PR X only if the test
+// suite passed for X *and no commit has been pushed to X since that run*.
+// A point-in-time Cedar policy cannot say this: "since" is about history.
+
+// Every other tool is allowed, so this bundle isolates the merge rule.
+@id("allow_other_tools")
+permit (principal, action in Drupe::Action::"CallTool", resource)
+unless { action == Drupe::Action::"MergePullRequest" };
+
+@id("merge_on_green_head")
+permit (
+    principal,
+    action == Drupe::Action::"MergePullRequest",
+    resource
+)
+when temporal {
+    !Drupe::Action::"PushCommit"::response{ input.pr: context.input.pr }
+    since within 24h
+    Drupe::Action::"RunTests"::response{ input.pr: context.input.pr, output.passed: true }
+};

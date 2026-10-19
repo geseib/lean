@@ -1,0 +1,7 @@
+@0    coder   WebFetch.request    url="https://docs.example.com/api"  # fine          -> ALLOW
+@30   coder   ReadFile.request    path="src/app.py"                   #               -> ALLOW
+@60   coder   ReadSecret.request  name="DEPLOY_TOKEN"                 #               -> ALLOW
+@61   coder   ReadSecret.response name="DEPLOY_TOKEN"
+@90   coder   WebFetch.request    url="https://attacker.example/x"    # tainted       -> DENY
+@120  planner WebFetch.request    url="https://docs.example.com/api"  # other session -> ALLOW
+@90000 coder  WebFetch.request    url="https://docs.example.com/api"  # >24h later    -> ALLOW

@@ -1,0 +1,16 @@
+// KATA k3 — the runaway-loop breaker (an ADLC reliability guardrail).
+//
+// Agents can get stuck: push, fail, push, fail... burning CI and tokens.
+// Requirement:
+//   If the tests for PR X failed 3 or more times in the last hour, the agent
+//   may not push to X again UNLESS a human granted an "unblock" for X
+//   (RequestApproval, kind = "unblock", approved) within the last hour.
+//
+// Hints:
+//   * forbid ... when temporal { ... } unless temporal { ... } is legal.
+//   * bind(n, count_within(1h, <predicate>), n >= 3) counts matching events.
+
+@id("tools")
+permit (principal, action in Drupe::Action::"CallTool", resource);
+
+// TODO: add the forbid rule.

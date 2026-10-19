@@ -1,0 +1,9 @@
+[
+  { "name": "lee (code owner) approves PR 42",           "principal": "Orchard::Human::\"lee\"",      "action": "Orchard::Action::\"approvePR\"", "resource": "Orchard::PullRequest::\"42\"", "decision": "allow" },
+  { "name": "sam drives PR 42, so cannot approve it",    "principal": "Orchard::Human::\"sam\"",      "action": "Orchard::Action::\"approvePR\"", "resource": "Orchard::PullRequest::\"42\"", "decision": "deny" },
+  { "name": "the reviewer agent may comment",            "principal": "Orchard::Agent::\"reviewer\"", "action": "Orchard::Action::\"commentPR\"", "resource": "Orchard::PullRequest::\"42\"", "decision": "allow" },
+  { "name": "the reviewer agent may not approve",        "principal": "Orchard::Agent::\"reviewer\"", "action": "Orchard::Action::\"approvePR\"", "resource": "Orchard::PullRequest::\"42\"", "decision": "deny" },
+  { "name": "merge on green with one human approval",    "principal": "Orchard::Agent::\"coder\"",    "action": "Orchard::Action::\"mergePR\"",   "resource": "Orchard::PullRequest::\"42\"", "context": { "ciPassed": true,  "humanApprovals": 1 }, "decision": "allow" },
+  { "name": "no merge on red CI",                        "principal": "Orchard::Agent::\"coder\"",    "action": "Orchard::Action::\"mergePR\"",   "resource": "Orchard::PullRequest::\"42\"", "context": { "ciPassed": false, "humanApprovals": 2 }, "decision": "deny" },
+  { "name": "no merge without a human approval",         "principal": "Orchard::Agent::\"coder\"",    "action": "Orchard::Action::\"mergePR\"",   "resource": "Orchard::PullRequest::\"42\"", "context": { "ciPassed": true,  "humanApprovals": 0 }, "decision": "deny" }
+]

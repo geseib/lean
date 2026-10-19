@@ -1,0 +1,25 @@
+// d2 — "Agents act up to the production gate, never through it alone."
+//
+// Requirement: dev/staging deploys are routine. A prod deploy of change C is
+// allowed only if a human approved a *release* of C in the last 4 hours.
+// The approval is itself a tool call (RequestApproval) whose response carries
+// the human verdict, so it lands in the same agent session's history.
+
+@id("deploy_below_prod")
+permit (principal, action == Drupe::Action::"Deploy", resource)
+when { context.input.env != "prod" };
+
+@id("deploy_prod_after_release_approval")
+permit (principal, action == Drupe::Action::"Deploy", resource)
+when { context.input.env == "prod" }
+when temporal {
+    formerly within 4h Drupe::Action::"RequestApproval"::response{
+        input.change: context.input.change,
+        input.kind: "release",
+        output.approved: true
+    }
+};
+
+// Asking for approval is always allowed.
+@id("may_ask")
+permit (principal, action == Drupe::Action::"RequestApproval", resource);

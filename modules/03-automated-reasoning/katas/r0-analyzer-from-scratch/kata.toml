@@ -1,0 +1,9 @@
+id = "reasoning/r0"
+title = "Build a policy analyzer from scratch in 40 lines of z3"
+type = "python"
+test = "check.py"
+hints = [
+  "`allows` is Cedar's decision rule as a formula: some permit matches AND no forbid matches. z3's Or([]) is False, which gives you deny-by-default for free.",
+  "To prove `ps1 implies ps2`, ask the solver for a counterexample: a request where ps1 allows and ps2 does not. `unsat` means none exists, which means the property is PROVED.",
+  "On `sat`, `s.model()` gives the counterexample; read each variable with `model.eval(var, model_completion=True)`.",
+]

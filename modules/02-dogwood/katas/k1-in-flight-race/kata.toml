@@ -4,5 +4,5 @@ type = "dogwood"
 hints = [
   "Run the check. Which decision point is wrong, and which event sits between the push request and the merge?",
   "A `response` event only exists once the tool call finished. A `request` exists as soon as it was attempted.",
-  "Change `PushCommit\"::response` to `PushCommit\"::request`. This is the same request-vs-response lesson as the AWS post's transfer-sum example.",
+  "Which of the two event kinds should taint the tested head? Change only that one token. Then try STRETCH.md.",
 ]

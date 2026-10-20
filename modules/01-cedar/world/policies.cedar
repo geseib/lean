@@ -26,6 +26,9 @@ permit (principal in Orchard::Team::"web", action == Orchard::Action::"commentPR
 @id("code-owners-approve-prs")
 permit (principal in Orchard::Role::"CodeOwner", action == Orchard::Action::"approvePR", resource);
 
+// ciPassed and humanApprovals are computed by the gateway from CI and the code
+// host, never taken from the agent's tool arguments. If the agent could set them,
+// this rule would rest on agent-forged evidence.
 @id("merge-on-green-with-a-human-approval")
 permit (principal, action == Orchard::Action::"mergePR", resource)
 when { context.ciPassed && context.humanApprovals >= 1 };

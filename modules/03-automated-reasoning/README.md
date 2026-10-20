@@ -21,7 +21,16 @@ A test asks "is *this* request handled right?". Automated reasoning asks
 
 Kata **`reasoning/r0`** has you build exactly this, in about 40 lines of Python
 with z3, for a mini-Orchard. Do it first: it makes everything after it
-unmagical.
+unmagical. (Two simplifications to notice: z3's `Int` is unbounded and the
+mini-model has no errors, while Cedar's `Long` is 64-bit and overflow is an
+error. Kata r3 is about exactly that gap.)
+
+> **If you know OPA:** `opa eval --partial` with `input` unknown gives you a
+> *residual query*: a simplified condition. It doesn't answer "is there an
+> input where `allow` holds and my invariant fails?". Answering that needs a
+> solver over the whole policy, the schema and the data model, which is what
+> SymCC does. Rego's expressiveness makes a complete encoding impractical;
+> Cedar was designed so one exists. See [docs/for-rego-users.md](../../docs/for-rego-users.md).
 
 ## 2. The real thing: Cedar's SymCC
 
@@ -33,7 +42,7 @@ complete in Lean. It's available from the Cedar CLI:
 cargo install cedar-policy-cli --locked --features analyze
 pip install cvc5          # tools/cvc5-py adapts the bindings to SymCC (or use a cvc5 binary)
 
-cd modules/01-cedar/world
+cd modules/01-cedar/world            # no-agent-prod.cedar is the property (see §3)
 cedar symcc --cvc5-path ../../../tools/cvc5-py \
   --principal-type Orchard::Agent --action 'Orchard::Action::"deploy"' \
   --resource-type Orchard::Environment --schema schema.cedarschema \
@@ -44,6 +53,12 @@ cedar symcc --cvc5-path ../../../tools/cvc5-py \
 Analyses are per **request environment**: one principal type, one action and
 one resource type. Over that environment, every entity and every attribute
 value is symbolic.
+
+**Why cvc5?** SymCC's encoding uses cvc5's theory of finite sets for Cedar's
+`Set` values and entity hierarchies (`set.member` and friends). z3 doesn't
+support that theory, so it rejects these queries. `tools/cvc5-py` runs cvc5
+through its official Python bindings when the cvc5 binary isn't installed.
+Set `SMT_TEE=/tmp/q.smt2` to keep a copy of the exact query SymCC sends.
 
 | Check | Question | Used for |
 |---|---|---|
@@ -123,8 +138,29 @@ policy to be live.
 
 <details><summary>4. Why does SymCC need cvc5 and not z3 here?</summary>
 
-Its encoding uses cvc5's finite-set theory (`set.member` …) for Cedar sets and
-entity hierarchies. The mini-analyzer in r0 has no sets, so z3 is fine there.
+As §2 explains: its encoding uses cvc5's finite-set theory (`set.member` …) for
+Cedar sets and entity hierarchies. The mini-analyzer in r0 has no sets, so z3
+is fine there.
 </details>
+
+## Bonus: proving a Dogwood forbid for every history
+
+Cedar's analyzer can't see inside temporal conditions, but you can still
+prove a lot. `dogwood lower` turns each temporal block into a boolean
+`context` slot, and SymCC treats that slot as *any* boolean. So if a property
+holds over the lowered policy set, it holds whatever the history says. Try it
+on the capstone guard: `never-deploy-prod` is pure Cedar, so "no prod deploy is
+ever allowed" can be proved for every possible trace, without replaying one:
+
+```bash
+G=modules/05-capstone/guard; S=modules/02-dogwood/world/schema.cedarschema
+dogwood lower $G/policy.dw --policy-schema $S --emit cedar-policies > /tmp/lowered.cedar
+dogwood lower $G/policy.dw --policy-schema $S --emit cedar-schema   > /tmp/lowered.cedarschema
+echo 'permit (principal, action, resource) unless { context.input.env == "prod" };' > /tmp/bound.cedar
+cedar symcc --cvc5-path tools/cvc5-py --principal-type Drupe::OAuthUser \
+  --action 'Drupe::Action::"Deploy"' --resource-type Drupe::Gateway --schema /tmp/lowered.cedarschema \
+  implies --policies1 /tmp/lowered.cedar --policies2 /tmp/bound.cedar
+# ✓ Policy set 1 implies policy set 2: VERIFIED
+```
 
 **Next:** [Module 4 — Lean](../04-lean/README.md): who checks the checker?

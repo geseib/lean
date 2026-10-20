@@ -18,12 +18,24 @@ Every tool call an agent makes becomes a **request**:
 
 The authorizer evaluates every policy against the request:
 
+0. A policy whose condition **errors** (integer overflow, for example) is
+   **skipped**, as if it weren't there.
 1. If **any `forbid`** is satisfied → **DENY**.
 2. Else if **any `permit`** is satisfied → **ALLOW**.
 3. Else → **DENY** (deny by default).
 
-That is the entire decision procedure. You'll prove it in Lean in module 4.
-Order never matters. A forbid can't be overridden.
+That is the entire decision procedure; module 4 defines it in Lean and proves
+its properties. Order never matters, and no permit can override a satisfied
+forbid. Step 0 is the catch: a forbid that *errors* denies nothing. Keep it in
+mind until kata `reasoning/r3`, where it bites.
+
+> **If you know Rego:** this is `default allow := false` plus a combinator
+> you'd normally write yourself (`allow if { permit; count(deny) == 0 }`),
+> built in and fixed. `forbid` is your `deny[msg]` without the message: Cedar
+> reports the *ids* of the policies that decided. Step 0 is Rego's
+> "a builtin error makes the rule undefined", except Cedar has no strict mode;
+> you prove the absence of errors instead (module 3). More in
+> [docs/for-rego-users.md](../../docs/for-rego-users.md).
 
 ## 2. Anatomy of a policy
 
@@ -40,7 +52,10 @@ unless { resource.protectedBranches.contains(context.branch) }; // no `unless` m
 
 * **Scope** filters cheaply: `principal is T`, `principal == E`, `principal in Group`, `action in [...]`.
 * **Conditions** read attributes (`principal.stage`), context (`context.branch`),
-  sets (`.contains`), hierarchy (`principal in Orchard::Role::"CodeOwner"`).
+  sets (`.contains`), hierarchy (`principal in Orchard::Role::"CodeOwner"`,
+  which is transitive, like `graph.reachable`), and optional attributes
+  (`context.input has branch && …`; reading a missing attribute is a validation
+  error, not Rego's "undefined").
 * **Entities are data you control.** In AgentCore Policy, principal attributes
   come from the caller's identity token, and `context.input` comes from the
   tool call the LLM made. Know which is which: the LLM can choose `context.input`,
@@ -115,16 +130,20 @@ suits agents: a new tool is closed until someone opens it.
 <details><summary>3. Why write <code>agents-never-deploy-prod</code> as a forbid when no permit lets agents reach prod anyway?</summary>
 
 Because permits accumulate. Next quarter someone adds a "hotfix fast lane"
-permit. The forbid is the invariant that survives that change. Module 3 proves
-it's redundant *today* (kata r1), then shows exactly how the hotfix breaks the
-system once the forbid is gone (kata r2).
+permit. The forbid is the invariant that survives that change. Kata r1 proves
+the property holds even with the forbid deleted, so it's redundant *today*.
+Kata r2 shows exactly how the hotfix breaks the system once the forbid is gone.
 </details>
 
 <details><summary>4. The LLM controls the tool-call arguments. Which part of the request is that?</summary>
 
 `context` (in AgentCore, `context.input`). Never let a security decision rest
 only on a value the agent chose. Pair it with principal attributes from
-identity, or with resource attributes from your own entity store.
+identity, or with resource attributes from your own entity store. Notice that
+Orchard's merge rule reads `context.ciPassed`: that is only safe because the
+*gateway* computes it from CI, not from the agent's arguments. The comment in
+`world/policies.cedar` says so, and the capstone shows what goes wrong when the
+agent produces its own evidence.
 </details>
 
 **Next:** [Module 2 — Dogwood](../02-dogwood/README.md): what Cedar can't see.

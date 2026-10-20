@@ -84,6 +84,12 @@ evidence that the policy says what you think it says.
   the same kind of proofs about a mini-Cedar, a mini-Dogwood monitor, and the
   whole lifecycle.
 
+> **If you know OPA/Rego:** OPA is a general engine over arbitrary JSON.
+> Cedar is deliberately small (no loops, no I/O, a typed schema), and that is
+> exactly what lets a solver *prove* things about every request (rung 3). OPA
+> is also stateless per query; Dogwood makes the agent's history an input.
+> The full mapping is in [docs/for-rego-users.md](../../docs/for-rego-users.md).
+
 Each rung answers a question the rung below cannot:
 
 | You want to know… | Testing | Cedar | Dogwood | SMT (symcc) | Lean |
@@ -139,7 +145,8 @@ per hour". Cedar sees one request and its context, not the trace.
 
 <details><summary>3. You tested 50 requests and the policy did the right thing on all of them. What can an SMT solver add?</summary>
 
-A statement about *all* requests and entity stores, including ones nobody
+A statement about *all* requests and entity stores (the typed data about
+principals and resources, like OPA's `data`), including ones nobody
 thought to test (a tier named `""`, a risk score of 2⁶²). It returns a proof or
 a concrete counterexample.
 </details>

@@ -596,6 +596,8 @@ COMMANDS = {"check": cmd_check, "status": cmd_status, "list": cmd_list,
 
 
 def main() -> int:
+    import signal
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)   # `./course check x | head` exits quietly
     if len(sys.argv) < 2 or sys.argv[1] not in COMMANDS:
         print(__doc__)
         return 0 if len(sys.argv) < 2 else 1

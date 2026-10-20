@@ -3,6 +3,6 @@ title = "Compose two histories: human review AND green head"
 type = "dogwood"
 hints = [
   "Start from bundle d1 (since) and bundle d2 (formerly + approval). You need both in one `when temporal { ... }` block.",
-  "The only temporal connective is `&&`. A `since` used as a conjunct must be parenthesized: `A && (B since within 24h C)`.",
-  "The approval's change field must equal the PR: `input.change: context.input.pr`, with `input.kind: \"review\"` and `output.approved: true`.",
+  "The only temporal connective is `&&`. Parenthesize the `since` conjunct for clarity, `A && (B since within 24h C)`, then check how Dogwood reads it with `dogwood explain`.",
+  "The approval's change field must equal the PR: `input.change: context.input.pr`, with `input.kind: \"review\"` and `output.approved: true`. Note that a review can predate later pushes; think about whether that's acceptable.",
 ]

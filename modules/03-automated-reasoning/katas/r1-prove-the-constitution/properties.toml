@@ -14,6 +14,15 @@ other = "bounds/no-agent-deploys-prod.cedar"
 must_reject = ["mutants/m1-hotfix-reaches-prod.cedar"]
 
 [[property]]
+name = "…and it still holds with the prod forbid deleted, so the forbid is redundant today (given)"
+check = "implies"
+principal = "Orchard::Agent"
+action = 'Orchard::Action::"deploy"'
+resource = "Orchard::Environment"
+policies = "fixtures/without-prod-forbid.cedar"
+other = "bounds/no-agent-deploys-prod.cedar"
+
+[[property]]
 name = "Agents push only to unprotected branches"
 check = "implies"
 principal = "Orchard::Agent"

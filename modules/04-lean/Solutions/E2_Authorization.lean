@@ -5,10 +5,16 @@ import Course.L2_Authorization
 namespace Solutions.E2
 open Course.L2
 
+/-- 0. Warm-up: a policy set holding one satisfied forbid denies.
+    (Hint: apply `forbid_trumps_permit`; membership in `[f]` is `by simp`.) -/
+theorem lone_forbid_denies {α : Type} (f : Policy α) (r : α)
+    (hf : f.effect = .forbid) (hs : f.satisfied r = true) : isAuthorized [f] r = .deny :=
+  forbid_trumps_permit f (by simp) hf hs
+
 /-- 1. Adding a permit can never take a permission away.
     (Hint: mirror `adding_forbid_is_safe`. Use `satisfiedWith_iff`.) -/
-theorem adding_permit_is_monotone {Req : Type} {ps : List (Policy Req)} {r : Req}
-    (p : Policy Req) (hp : p.effect = .permit)
+theorem adding_permit_is_monotone {α : Type} {ps : List (Policy α)} {r : α}
+    (p : Policy α) (hp : p.effect = .permit)
     (h : isAuthorized ps r = .allow) : isAuthorized (p :: ps) r = .allow := by
   obtain ⟨q, hq, hqe, hqs⟩ := allowed_only_if_explicitly_permitted h
   have hnf : satisfiedWith .forbid ps r = false := by

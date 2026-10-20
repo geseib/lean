@@ -35,45 +35,46 @@ inductive Outcome where
   | error (msg : String)
   deriving Repr
 
-structure Policy (Req : Type) where
+/-- A policy over requests of any type `α`. -/
+structure Policy (α : Type) where
   id     : String
   effect : Effect
-  cond   : Req → Outcome
+  cond   : α → Outcome
 
 /-- A policy is *satisfied* only when its condition evaluates to `ok true`.
     An erroring policy is simply not satisfied. That is Cedar's rule. -/
-def Policy.satisfied (p : Policy Req) (r : Req) : Bool :=
+def Policy.satisfied (p : Policy α) (r : α) : Bool :=
   match p.cond r with
   | .ok b    => b
   | .error _ => false
 
 /-- Is some policy with effect `e` satisfied? -/
-def satisfiedWith (e : Effect) (ps : List (Policy Req)) (r : Req) : Bool :=
+def satisfiedWith (e : Effect) (ps : List (Policy α)) (r : α) : Bool :=
   ps.any (fun p => p.effect == e && p.satisfied r)
 
 /-- Deny by default; a satisfied forbid beats any permit. -/
-def isAuthorized (ps : List (Policy Req)) (r : Req) : Decision :=
+def isAuthorized (ps : List (Policy α)) (r : α) : Decision :=
   if satisfiedWith .forbid ps r then .deny
   else if satisfiedWith .permit ps r then .allow
   else .deny
 
 /-! ## Theorems about *every* policy set -/
 
-theorem default_deny (r : Req) : isAuthorized ([] : List (Policy Req)) r = .deny := by
+theorem default_deny (r : α) : isAuthorized ([] : List (Policy α)) r = .deny := by
   simp [isAuthorized, satisfiedWith]
 
 /-- Unpacking `satisfiedWith` into plain logic, used by the theorems below. -/
-theorem satisfiedWith_iff {e : Effect} {ps : List (Policy Req)} {r : Req} :
+theorem satisfiedWith_iff {e : Effect} {ps : List (Policy α)} {r : α} :
     satisfiedWith e ps r = true ↔ ∃ p ∈ ps, p.effect = e ∧ p.satisfied r = true := by
   simp [satisfiedWith, List.any_eq_true]
 
-theorem forbid_trumps_permit {ps : List (Policy Req)} {r : Req}
-    (p : Policy Req) (hp : p ∈ ps) (he : p.effect = .forbid) (hs : p.satisfied r = true) :
+theorem forbid_trumps_permit {ps : List (Policy α)} {r : α}
+    (p : Policy α) (hp : p ∈ ps) (he : p.effect = .forbid) (hs : p.satisfied r = true) :
     isAuthorized ps r = .deny := by
   have hf : satisfiedWith .forbid ps r = true := satisfiedWith_iff.mpr ⟨p, hp, he, hs⟩
   simp [isAuthorized, hf]
 
-theorem allowed_only_if_explicitly_permitted {ps : List (Policy Req)} {r : Req}
+theorem allowed_only_if_explicitly_permitted {ps : List (Policy α)} {r : α}
     (h : isAuthorized ps r = .allow) :
     ∃ p ∈ ps, p.effect = .permit ∧ p.satisfied r = true := by
   by_cases hf : satisfiedWith .forbid ps r = true
@@ -83,7 +84,7 @@ theorem allowed_only_if_explicitly_permitted {ps : List (Policy Req)} {r : Req}
     · simp [isAuthorized, hf, hp] at h
 
 /-- Policy order never matters (Cedar's `order_and_dup_independent`, in miniature). -/
-theorem order_independent {ps qs : List (Policy Req)} (h : ps.Perm qs) (r : Req) :
+theorem order_independent {ps qs : List (Policy α)} (h : ps.Perm qs) (r : α) :
     isAuthorized ps r = isAuthorized qs r := by
   have key : ∀ e, satisfiedWith e ps r = satisfiedWith e qs r := by
     intro e
@@ -94,8 +95,8 @@ theorem order_independent {ps qs : List (Policy Req)} (h : ps.Perm qs) (r : Req)
   simp [isAuthorized, key]
 
 /-- Adding a forbid can only take permissions away. -/
-theorem adding_forbid_is_safe {ps : List (Policy Req)} {r : Req}
-    (f : Policy Req) (hf : f.effect = .forbid)
+theorem adding_forbid_is_safe {ps : List (Policy α)} {r : α}
+    (f : Policy α) (hf : f.effect = .forbid)
     (h : isAuthorized (f :: ps) r = .allow) : isAuthorized ps r = .allow := by
   have hnot : satisfiedWith .forbid (f :: ps) r = false := by
     cases hx : satisfiedWith .forbid (f :: ps) r
@@ -114,8 +115,8 @@ Because an erroring policy is "not satisfied", an erroring **forbid** never
 denies. A guard that can overflow is a guard with a hole in it. -/
 
 /-- A policy that errors on a request can be deleted without changing the decision. -/
-theorem erroring_policy_is_ignored {ps : List (Policy Req)} {r : Req}
-    (p : Policy Req) (msg : String) (h : p.cond r = .error msg) :
+theorem erroring_policy_is_ignored {ps : List (Policy α)} {r : α}
+    (p : Policy α) (msg : String) (h : p.cond r = .error msg) :
     isAuthorized (p :: ps) r = isAuthorized ps r := by
   have hs : p.satisfied r = false := by simp [Policy.satisfied, h]
   simp [isAuthorized, satisfiedWith, hs]
@@ -141,7 +142,11 @@ theorem fixed_gate_has_no_hole (risk : Nat) (h : risk > 5) :
 
 /-! ## Orchard, modelled and proved
 
-The same world as `modules/01-cedar/world`, simplified to what the theorems need. -/
+The same world as `modules/01-cedar/world`, simplified to what the theorems need.
+One simplification matters: here `Tier` is an enum, so a tier named `""` or
+`"qa"` can't exist. In the Cedar schema `tier` is any `String`, which is exactly
+why kata `reasoning/r4` finds a counterexample there. A proof is only as strong
+as its model's fit to the real system. -/
 
 inductive Kind where
   | agent | human

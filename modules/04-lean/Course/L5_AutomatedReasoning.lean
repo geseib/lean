@@ -26,7 +26,7 @@ namespace Course.L5
 
 /-! ## `omega`: budgets and rate limits -/
 
-/-- Kata `dogwood` d5: if every call stays under the per-call cap and the
+/-- Bundle d5 (module 2): if every call stays under the per-call cap and the
     budget admits only `n` calls, the hourly spend is bounded. -/
 theorem token_budget (calls perCall n : Nat) (hcalls : calls ≤ n) :
     calls * perCall ≤ n * perCall :=

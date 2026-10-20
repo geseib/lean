@@ -5,7 +5,10 @@ project = "../.."
 file = "Exercises/E2_Authorization.lean"
 solution = "Solutions/E2_Authorization.lean"
 hints = [
-  "Open Exercises/E2_Authorization.lean in VS Code (Lean 4 extension) and put your cursor after `by` to see the goal.",
-  "Each exercise's docstring names the tactic or lemma to reach for. The matching lesson in Course/ proves a sibling theorem: copy its shape.",
-  "Still stuck? The reference proofs are in modules/04-lean/Solutions/E2_Authorization.lean.",
+  "Start with exercise 0: it is one application of `forbid_trumps_permit`. Read that lemma's statement in Course/L2_Authorization.lean first.",
+  "Exercise 1 (adding a permit): first get a witness with `obtain ⟨q, hq, hqe, hqs⟩ := allowed_only_if_explicitly_permitted h`. Then show the forbid side is still false with `cases hx : satisfiedWith .forbid ps r` (one case is impossible: `simp [isAuthorized, hx] at h`).",
+  "Exercise 1, continued: the permit side of `p :: ps` is `satisfiedWith_iff.mpr ⟨q, List.mem_cons_of_mem _ hq, hqe, hqs⟩`. For the forbid side of `p :: ps`, `simp [satisfiedWith, hp] at hnf ⊢` reduces it to what you already have.",
+  "Exercise 2: `cases hk : r.principal.kind`. The `human` case is `rfl`. In the `agent` case, build a denial with `forbid_trumps_permit agentsNeverApprove (by simp [orchard]) rfl (by simp [Policy.satisfied, agentsNeverApprove, hk, ha])`, then `rw [this] at h` and `contradiction`.",
+  "Exercise 3 (boss, optional): get the permit `p` that allowed the merge, turn `p ∈ orchard` into seven cases with `simp only [orchard, List.mem_cons, List.not_mem_nil, or_false] at hmem`, split them with `rcases hmem with rfl | rfl | rfl | rfl | rfl | rfl | rfl`, and finish every case with `simp_all [Policy.satisfied, <all seven policy names>]`.",
+  "The reference proofs are in modules/04-lean/Solutions/E2_Authorization.lean.",
 ]

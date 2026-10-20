@@ -33,6 +33,8 @@ git clone <this repo> && cd lean
 ```
 
 Then read [Module 0](modules/00-orientation/README.md) (30 min, no installs).
+**Coming from OPA/Rego?** Keep [docs/for-rego-users.md](docs/for-rego-users.md)
+open alongside: it maps what you know onto every module.
 
 ## How a rung works
 
@@ -79,7 +81,7 @@ modules/03-automated-reasoning katas r0 (z3 from scratch) – r5 (symcc)
 modules/04-lean/               Lake project: Course/ lessons, Exercises/, Solutions/
 modules/05-capstone/           guard/ (Claude Code hook), .claude/settings.json, feature-ship-gate/
 tools/                         dwtrace.py (compact traces), cvc5-py (cvc5 for SymCC), z3-as-cvc5
-docs/                          setup, production notes, sources
+docs/                          setup, OPA/Rego bridge, production notes
 scripts/check-all.sh           everything CI runs
 ```
 
@@ -91,4 +93,4 @@ scripts/check-all.sh           everything CI runs
 - Anthropic, [The AI-native SDLC playbook](https://claude.com/resources/articles/the-ai-native-sdlc-playbook)
 - [Lean 4](https://lean-lang.org/), [Claude Code hooks](https://code.claude.com/docs/en/hooks)
 
-More detail: [docs/setup.md](docs/setup.md) · [docs/production.md](docs/production.md).
+More detail: [docs/setup.md](docs/setup.md) · [docs/for-rego-users.md](docs/for-rego-users.md) · [docs/production.md](docs/production.md).

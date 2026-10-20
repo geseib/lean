@@ -18,7 +18,9 @@ theorem formerlyWithin_iff (w now : Nat) (p : Event → Bool) (h : History) :
     formerlyWithin w now p h = true ↔ FormerlyWithin w now p h := by
   simp [formerlyWithin, FormerlyWithin, List.any_eq_true]
 
-def approvedRelease (change : String) (x : Event) : Bool :=
+/-- (Simplified: our `Event` has no approval *kind*, so any approved response
+    for the change counts. Kata k2 shows why the kind matters.) -/
+def approvedRelease (change : Nat) (x : Event) : Bool :=
   x.tool == .requestApproval && x.kind == .response && x.ok && x.subject == change
 
 /-- Bundle d2: a deploy needs a human release approval in the last 4 hours. -/

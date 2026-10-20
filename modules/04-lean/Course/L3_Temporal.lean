@@ -8,17 +8,32 @@ operators come from Metric First-Order Temporal Logic (MFOTL), and its
 reference interpreter is a **runtime monitor**: an algorithm that keeps a
 little state and answers "does the policy hold now?" at every event.
 
-Two questions matter for any monitor:
+Three questions matter for any monitor, and they're easy to blur:
 
 1. **Is the algorithm right?** Does the code compute the logic's meaning?
-   Here we prove our monitor for `!bad since good` is *exactly* the formal
-   semantics (sound and complete).
-2. **Does enforcing it give the safety we wanted?** We prove that any
-   execution filtered by the monitor satisfies a declarative safety property,
-   whatever the agent tries.
+   We prove our monitor for `!bad since good` is *exactly* its formal
+   semantics (sound and complete): `sinceNot_iff`.
+2. **Does enforcement deliver the specification?** Every execution filtered
+   by the monitor satisfies the temporal-logic spec, whatever the agent tries:
+   `enforce_safe`.
+3. **Is the specification the property we actually wanted?** Here Lean finds
+   a counterexample. The `since` spec is satisfied by a trace that merges an
+   untested commit (the "second race" from kata k1's stretch goal), so we
+   design a better spec and prove a monitor for it: `enforceSha_merges_tested`.
+
+Questions 1 and 2 are about the *implementation*; question 3 is about the
+*requirement*. Proofs settle the first two. Only a property stated
+independently of the monitor can expose the third.
 
 We also prove the AWS post's warning about counting `response` instead of
 `request` events by exhibiting a concrete concurrent trace.
+
+**A simplification to know about:** in this model a denied request never enters
+the history (`step` drops it). Dogwood keeps denied requests as attempts (module
+2, bundle d4). For the `since` rule, keeping attempts can only add pushes,
+which makes the monitor *more* conservative, so the safety results carry over.
+For counting rules the difference matters, and lesson 3's counting section
+models it explicitly.
 -/
 
 namespace Course.L3
@@ -37,8 +52,9 @@ structure Event where
   time    : Nat
   tool    : Tool
   kind    : Kind
-  subject : String          -- the PR or change the event is about
+  subject : Nat             -- the PR or change the event is about
   ok      : Bool := true    -- for responses: tests passed / human approved
+  head    : Nat  := 0       -- the commit the event concerns (pushed, tested or merged)
   deriving Repr
 
 /-- A history, **newest event first** (so `e :: h` means "e happened after h"). -/
@@ -98,11 +114,11 @@ theorem sinceNot_iff (bad good : Event → Bool) (h : History) :
 
 /-! ## The merge policy (bundle d1 / kata k1) as a monitor -/
 
-def greenFor (pr : String) (x : Event) : Bool :=
+def greenFor (pr : Nat) (x : Event) : Bool :=
   x.tool == .runTests && x.kind == .response && x.ok && x.subject == pr
 
 /-- k1's lesson: count the push *request*, so an in-flight push taints the head. -/
-def pushTo (pr : String) (x : Event) : Bool :=
+def pushTo (pr : Nat) (x : Event) : Bool :=
   x.tool == .pushCommit && x.kind == .request && x.subject == pr
 
 /-- The decision for an incoming event, given the history before it. -/
@@ -116,8 +132,8 @@ def step (h : History) (e : Event) : History :=
 
 def enforce (es : List Event) : History := es.foldl step []
 
-/-- The safety property, stated only with the declarative semantics:
-    every executed merge was preceded by green tests on an untouched head. -/
+/-- The specification, stated with the declarative semantics only: every
+    executed merge satisfies the MFOTL formula `!push since green`. -/
 def Safe : History → Prop
   | []          => True
   | e :: older  => Safe older ∧
@@ -133,12 +149,77 @@ theorem step_safe (h : History) (e : Event) (hs : Safe h) : Safe (step h e) := b
     exact (sinceNot_iff _ _ _).mp this
   · exact hs
 
-/-- **Whatever the agent attempts, the executed trace is safe.** -/
+/-- **Whatever the agent attempts, the executed trace meets the specification.** -/
 theorem enforce_safe (es : List Event) : Safe (enforce es) := by
   suffices ∀ h, Safe h → Safe (es.foldl step h) from this [] trivial
   induction es with
   | nil => intro h hs; exact hs
   | cons e es ih => intro h hs; exact ih (step h e) (step_safe h e hs)
+
+/-! ## Is the specification the right one?
+
+The `since` spec talks about *when* events happened. What we wanted is about
+*which commit* was tested. Let each push carry the commit it pushes, and each
+test response the commit it tested. -/
+
+/-- The commit at the tip of `pr` after the executed pushes in `h` (0 initially). -/
+def currentHead (pr : Nat) : History → Nat
+  | []      => 0
+  | e :: es => if e.tool == .pushCommit && e.kind == .request && e.subject == pr then e.head
+               else currentHead pr es
+
+/-- Some green run in `h` tested exactly the commit that `pr` points at now. -/
+def testedNow (pr : Nat) (h : History) : Bool :=
+  h.any (fun t => greenFor pr t && t.head == currentHead pr h)
+
+/-- **The property we actually wanted**, stated independently of any monitor:
+    every executed merge merged a commit that a green test run tested. -/
+def mergesTested : History → Bool
+  | []          => true
+  | e :: older  => mergesTested older &&
+      (!(e.tool == .merge && e.kind == .request) || testedNow e.subject older)
+
+/-- The second race: a push lands while the tests run on the previous commit. -/
+def secondRace : List Event :=
+  [ { time := 0,   tool := .runTests,   kind := .request,  subject := 42, head := 1 },
+    { time := 100, tool := .pushCommit, kind := .request,  subject := 42, head := 2 },
+    { time := 110, tool := .pushCommit, kind := .response, subject := 42, head := 2 },
+    { time := 300, tool := .runTests,   kind := .response, subject := 42, head := 1 },
+    { time := 310, tool := .merge,      kind := .request,  subject := 42, head := 2 } ]
+
+/-- The `since` monitor lets the race through: the spec is met, the property is not. -/
+theorem since_spec_misses_second_race :
+    Safe (enforce secondRace) ∧ mergesTested (enforce secondRace) = false :=
+  ⟨enforce_safe secondRace, by decide⟩
+
+/-- A monitor that correlates on *what was tested*, not on *when*. -/
+def allowedSha (h : History) (e : Event) : Bool :=
+  if e.tool == .merge && e.kind == .request then testedNow e.subject h else true
+
+def stepSha (h : History) (e : Event) : History := if allowedSha h e then e :: h else h
+
+def enforceSha (es : List Event) : History := es.foldl stepSha []
+
+theorem stepSha_merges_tested (h : History) (e : Event) (hs : mergesTested h = true) :
+    mergesTested (stepSha h e) = true := by
+  unfold stepSha
+  split
+  · rename_i ha
+    simp only [mergesTested, hs, Bool.true_and, Bool.or_eq_true, Bool.not_eq_true']
+    by_cases hm : (e.tool == .merge && e.kind == .request) = true
+    · right; simpa [allowedSha, hm] using ha
+    · left; simpa using hm
+  · exact hs
+
+/-- **Whatever the agent attempts, every executed merge merged a tested commit.** -/
+theorem enforceSha_merges_tested (es : List Event) : mergesTested (enforceSha es) = true := by
+  suffices ∀ h, mergesTested h = true → mergesTested (es.foldl stepSha h) = true from this [] rfl
+  induction es with
+  | nil => intro h hs; exact hs
+  | cons e es ih => intro h hs; exact ih (stepSha h e) (stepSha_merges_tested h e hs)
+
+/-- And on the race itself, the SHA monitor refuses the merge. -/
+example : (enforceSha secondRace).length = 4 := by decide
 
 /-! ## Counting: request vs. response (bundle d4, and the AWS post's sum example)
 
@@ -175,8 +256,10 @@ theorem request_counting_is_safe (limit : Nat) (es : List Event) :
 
 /-- Three deploys launched in parallel before any response comes back. -/
 def burst : List Event :=
-  [⟨0, .deploy, .request, "c1", true⟩, ⟨1, .deploy, .request, "c2", true⟩,
-   ⟨2, .deploy, .request, "c3", true⟩, ⟨3, .deploy, .response, "c1", true⟩]
+  [ { time := 0, tool := .deploy, kind := .request,  subject := 1 },
+    { time := 1, tool := .deploy, kind := .request,  subject := 2 },
+    { time := 2, tool := .deploy, kind := .request,  subject := 3 },
+    { time := 3, tool := .deploy, kind := .response, subject := 1 } ]
 
 /-- Counting responses lets all three through: the limit of 2 is broken. -/
 theorem response_counting_is_unsafe :

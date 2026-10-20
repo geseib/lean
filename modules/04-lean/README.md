@@ -33,7 +33,7 @@ it updates after every tactic. Proving is a conversation with that panel.
 |---|---|---|
 | [`Course/L1_Basics.lean`](Course/L1_Basics.lean) | types, functions, `#eval`, `rfl`, `simp`, `cases`, `induction`, `omega` | — |
 | [`Course/L2_Authorization.lean`](Course/L2_Authorization.lean) | a 40-line mini-Cedar; `default_deny`, `forbid_trumps_permit`, `allowed_only_if_explicitly_permitted`, `order_independent`, `erroring_policy_is_ignored`; Orchard's gate and separation of duties as theorems | module 1, kata r3 |
-| [`Course/L3_Temporal.lean`](Course/L3_Temporal.lean) | a mini-Dogwood: **the `since` monitor equals its MFOTL semantics** (`sinceNot_iff`); **any enforced execution is safe** (`enforce_safe`); request-counting is safe and response-counting is **provably unsafe** | module 2, kata k1 |
+| [`Course/L3_Temporal.lean`](Course/L3_Temporal.lean) | a mini-Dogwood: **the `since` monitor equals its MFOTL semantics** (`sinceNot_iff`); **enforcement delivers the spec** (`enforce_safe`); then Lean shows **the spec itself is too weak** (`since_spec_misses_second_race`), and a SHA-correlating monitor is proved to merge only tested commits (`enforceSha_merges_tested`); request-counting is safe and response-counting is **provably unsafe** | module 2, kata k1 and its stretch goal |
 | [`Course/L4_Lifecycle.lean`](Course/L4_Lifecycle.lean) | the AI-native SDLC as a state machine; **every released change carries every human sign-off, and its reviewer was not its author** (`released_has_every_gate`) | the ADLC |
 | [`Course/L5_AutomatedReasoning.lean`](Course/L5_AutomatedReasoning.lean) | `omega` and `bv_decide`: a SAT solver whose answers the kernel re-checks; 64-bit overflow exactly as Cedar has it | module 3 |
 
@@ -48,7 +48,7 @@ Open `Exercises/E*.lean`, replace each `sorry` with a proof, and check:
 | Kata | Theorems |
 |---|---|
 | `lean/e1` | humans deploy anywhere; `countAgents` over append; replicate |
-| `lean/e2` | adding a permit is monotone; only humans approve; **boss:** nothing merges on red CI |
+| `lean/e2` | warm-up: a lone forbid denies; adding a permit is monotone; only humans approve; **boss (optional):** nothing merges on red CI. Hints are staged tactic by tactic |
 | `lean/e3` | a `formerly within` monitor equals its semantics; enforcing d2's approval rule is safe |
 | `lean/e4` | `released` only follows `merged`; merged ⇒ planned; sign-offs are never erased |
 
@@ -65,6 +65,14 @@ Open `Exercises/E*.lean`, replace each `sorry` with a proof, and check:
 | arithmetic over `Nat`/`Int` | `omega` |
 | bit-vectors (`BitVec 64`) | `bv_decide` |
 | "this is impossible" | `contradiction`, `simp at h` |
+| case on a boolean you'll need later | `cases hx : satisfiedWith .forbid ps r` (keeps `hx : … = false/true`) |
+| two cases you name yourself | `by_cases h : x = true` |
+| an `if … then … else` in the goal | `split` (then `rename_i h` to name the new hypothesis) |
+| finish with a hypothesis after simplifying | `simpa [defs] using h` |
+| build `⟨a, b, c⟩` but prove `c` later | `refine ⟨a, b, ?_⟩` |
+| a hypothesis `x ∈ a :: l` | `rcases List.mem_cons.mp hx with rfl \| hx` (`rfl` substitutes the equality) |
+| prove a stronger, more general statement first | `suffices ∀ h, P h from this [] trivial` |
+| run the same tactic on every goal | `cases x <;> simp_all` |
 
 ## ✅ Check yourself
 
@@ -75,12 +83,14 @@ and the request falls through to the permits. An erroring permit just doesn't
 grant, which is the safe direction.
 </details>
 
-<details><summary>2. <code>enforce_safe</code> holds "whatever the agent attempts". What exactly is quantified?</summary>
+<details><summary>2. <code>enforce_safe</code> holds "whatever the agent attempts", yet the second race still merges an untested commit. How can both be true?</summary>
 
-Every list of events `es`: any interleaving, any subjects, any timing,
-adversarial or not. The theorem says the *executed* trace (allowed requests
-plus responses) satisfies `Safe`. That's the shape of a runtime-verification
-guarantee.
+`enforce_safe` quantifies over every list of events and proves the executed
+trace meets the **spec** (`!push since green`). The race meets that spec too.
+The spec is the problem, not the monitor, and `since_spec_misses_second_race`
+proves it. Verification checks an implementation against a requirement; it
+can't tell you the requirement is the right one. Stating the property you
+*care* about independently (`mergesTested`) is what exposes it.
 </details>
 
 <details><summary>3. <code>sinceNot_iff</code> proves both directions. What would go wrong with only "monitor true → semantics true"?</summary>

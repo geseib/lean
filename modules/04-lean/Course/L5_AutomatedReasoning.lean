@@ -50,7 +50,7 @@ theorem risk_times_1000_can_overflow :
     every value where the multiplication does NOT overflow, the two guards agree. -/
 theorem guards_agree_without_overflow (x : BitVec 64)
     (h : BitVec.smulOverflow x 1000#64 = false) :
-    (x * 1000#64).sgt 5000#64 = x.sgt 5#64 := by
+    (5000#64).slt (x * 1000#64) = (5#64).slt x := by
   bv_decide
 
 /-! ## Permission bitmasks, proved for all 2⁶⁴ values -/

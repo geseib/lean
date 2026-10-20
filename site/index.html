@@ -698,7 +698,7 @@ WIDGETS.lean = () => {
       : esc(st.goal).replace(/⊢[^\n]*/g, m => `<span class="goal">${m}</span>`);
     say.textContent = st.say; prev.disabled = s === 0; next.disabled = s === LEAN.steps.length - 1;
   }
-  box.append(h("div", { class: "wtitle" }, h("h3", {}, "Step through a proof (from Course/L1_Basics.lean)"), h("span", { class: "pill" }, "the right pane is Lean's infoview")),
+  box.append(h("div", { class: "wtitle" }, h("h3", {}, "Step through a proof (from Course/L1_Basics.lean)"), h("span", { class: "pill" }, "goal states captured from Lean 4.35")),
     h("div", { class: "lean" }, src, iv), h("div", { class: "row" }, prev, next), say);
   draw();
   return box;

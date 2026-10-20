@@ -97,21 +97,9 @@ theorem inv_start : Inv start := by
 
 theorem inv_step {c d : Change} (hc : Inv c) (hs : Step c d) : Inv d := by
   obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hc
-  cases hs with
-  | acceptIntent _ po hst _ =>
-    constructor <;> simp_all [Stage.rank]
-  | approveSpec _ po hst _ =>
-    constructor <;> simp_all [Stage.rank]
-  | approvePlan _ lead hst _ =>
-    constructor <;> simp_all [Stage.rank]
-  | build _ agent hst _ =>
-    constructor <;> simp_all [Stage.rank]
-  | requestChanges _ _ hst =>
-    constructor <;> simp_all [Stage.rank]
-  | approveReview _ lead hst _ hne =>
-    constructor <;> simp_all [Stage.rank]
-  | release _ rm hst _ =>
-    refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;> simp_all [Stage.rank]
+  -- One case per transition; in each, every invariant clause is arithmetic on
+  -- `Stage.rank` plus the sign-off the transition just recorded.
+  cases hs <;> constructor <;> simp_all [Stage.rank]
 
 theorem reachable_inv {c : Change} (h : Reachable c) : Inv c := by
   induction h with

@@ -98,6 +98,7 @@ theorem order_independent {ps qs : List (Policy α)} (h : ps.Perm qs) (r : α) :
 theorem adding_forbid_is_safe {ps : List (Policy α)} {r : α}
     (f : Policy α) (hf : f.effect = .forbid)
     (h : isAuthorized (f :: ps) r = .allow) : isAuthorized ps r = .allow := by
+  -- From `h`: no forbid in `f :: ps` fires, and some permit does.
   have hnot : satisfiedWith .forbid (f :: ps) r = false := by
     cases hx : satisfiedWith .forbid (f :: ps) r
     · rfl
@@ -106,8 +107,21 @@ theorem adding_forbid_is_safe {ps : List (Policy α)} {r : α}
     cases hx : satisfiedWith .permit (f :: ps) r
     · simp [isAuthorized, hnot, hx] at h
     · rfl
-  simp [satisfiedWith, hf] at hnot hperm
-  simp [isAuthorized, satisfiedWith, hnot, hperm]
+  -- So no forbid in `ps` fires either...
+  have hf' : satisfiedWith .forbid ps r = false := by
+    cases hx : satisfiedWith .forbid ps r
+    · rfl
+    · obtain ⟨q, hq, hqe, hqs⟩ := satisfiedWith_iff.mp hx
+      have : satisfiedWith .forbid (f :: ps) r = true :=
+        satisfiedWith_iff.mpr ⟨q, List.mem_cons_of_mem _ hq, hqe, hqs⟩
+      simp [this] at hnot
+  -- ...and the permit that fired is in `ps`, because `f` is a forbid.
+  have hp' : satisfiedWith .permit ps r = true := by
+    obtain ⟨q, hq, hqe, hqs⟩ := satisfiedWith_iff.mp hperm
+    rcases List.mem_cons.mp hq with rfl | hq
+    · simp [hf] at hqe
+    · exact satisfiedWith_iff.mpr ⟨q, hq, hqe, hqs⟩
+  simp [isAuthorized, hf', hp']
 
 /-! ## Errors: the forbid that wasn't
 
@@ -211,7 +225,7 @@ theorem separation_of_duties (r : Req)
     (h : isAuthorized orchard r = .allow) (ha : r.action = .approvePR) :
     r.principal.name ≠ r.prDriver := by
   intro heq
-  have hd := forbid_trumps_permit noSelfApproval (by simp [orchard]) rfl
+  have hd := forbid_trumps_permit (ps := orchard) (r := r) noSelfApproval (by simp [orchard]) rfl
     (by simp [Policy.satisfied, noSelfApproval, ha, heq])
   rw [hd] at h
   contradiction

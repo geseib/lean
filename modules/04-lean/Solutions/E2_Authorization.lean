@@ -35,7 +35,7 @@ theorem only_humans_approve (r : Req) (h : isAuthorized orchard r = .allow)
   cases hk : r.principal.kind with
   | human => rfl
   | agent =>
-    have hd := forbid_trumps_permit agentsNeverApprove (by simp [orchard]) rfl
+    have hd := forbid_trumps_permit (ps := orchard) (r := r) agentsNeverApprove (by simp [orchard]) rfl
       (by simp [Policy.satisfied, agentsNeverApprove, hk, ha])
     rw [hd] at h
     contradiction

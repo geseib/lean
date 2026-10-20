@@ -250,9 +250,9 @@ theorem request_counting_is_safe (limit : Nat) (es : List Event) :
     by_cases hd : isDeployReq e = true
     · by_cases hlim : h.countP isDeployReq ≥ limit
       · simp [hd, hlim, hh]
-      · simp [hd, hlim, List.countP_cons]
+      · simp [hd, hlim]
         omega
-    · simp [hd, List.countP_cons, hh]
+    · simp [hd, hh]
 
 /-- Three deploys launched in parallel before any response comes back. -/
 def burst : List Event :=

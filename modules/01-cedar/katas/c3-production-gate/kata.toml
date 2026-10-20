@@ -1,6 +1,7 @@
 id = "cedar/c3"
 title = "The production gate: agents ship up to prod, humans ship prod"
 type = "cedar"
+required_ids = ["agents-never-deploy-prod"]
 hints = [
   "Delete or narrow the blanket permit: it lets everyone deploy everywhere.",
   "One permit for ops agents below prod (`resource.tier != \"prod\"`), one for the ReleaseManager role.",

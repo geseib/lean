@@ -8,7 +8,7 @@ changes when the guardrails have to hold for real.
 | `guard.py` hook replays the whole trace with Dogwood's reference interpreter on every call | an enforcement point that keeps temporal state incrementally, such as Amazon Bedrock AgentCore Policy (which supports Dogwood) in front of an AgentCore Gateway |
 | tool calls classified from free-form shell commands | agents call **typed tools** (MCP) through a gateway, so the action and its arguments are explicit |
 | principal is a fixed name (`claude`) | principal attributes come from the caller's identity token (JWT claims), which the LLM cannot alter |
-| `.guard/*.trace` files | durable, append-only event log with ingestion timestamps (see the Dogwood guide on ordering and delayed events) |
+| per-session trace files under `~/.cache` | durable, append-only event log with ingestion timestamps (see the Dogwood guide on ordering and delayed events) |
 | `cedar symcc` run by hand and in CI | the same analyses run when policies change; AgentCore Policy validates generated policies and reports dead, blanket and conflicting rules and change impact |
 | hooks in `.claude/settings.json` | add org-managed settings users cannot override, OS sandboxing, and network egress controls, so the hook is one layer of several |
 

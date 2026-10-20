@@ -17,6 +17,14 @@ when { context.input.env == "prod" };
 forbid (principal, action == Drupe::Action::"PushCommit", resource)
 when { context.input has branch && ["main", "master", "release"].contains(context.input.branch) };
 
+// The guard's own policy, code and hook config are off limits to the agent it guards.
+@id("guard-is-read-only")
+forbid (principal, action == Drupe::Action::"WriteCode", resource)
+when {
+    context.input.path like "*.claude/*" || context.input.path like "*.guard*" ||
+    context.input.path like "*guard/policy.dw*" || context.input.path like "*guard/guard.py*"
+};
+
 // --- history-aware (Dogwood) -------------------------------------------------
 // Lethal trifecta: once this session has touched a secret, no more egress today.
 @id("no-egress-after-secret")

@@ -97,7 +97,7 @@ def workspace(kata: Kata, solution: bool) -> Path:
     tmp = Path(tempfile.mkdtemp(prefix="course-"))
     dst = tmp / kata.path.name
     shutil.copytree(kata.path, dst, ignore=shutil.ignore_patterns("solution"))
-    if solution:
+    if solution and kata.type != "lean":   # Lean katas name their solution file in kata.toml
         sol = kata.path / "solution"
         if not sol.is_dir():
             sys.exit(red(f"{kata.id} has no solution/ directory"))
@@ -146,12 +146,19 @@ def check_cedar(kata: Kata, ws: Path) -> Result:
         return Result(False, [red("✗ cedar validate rejected your policies:"), (v.stdout + v.stderr).rstrip()])
     lines.append(green("✓ validates against the Orchard schema"))
 
+    text = policies.read_text()
+    missing = [pid for pid in kata.spec.get("required_ids", []) if f'@id("{pid}")' not in text]
+    for pid in missing:
+        lines.append(red(f'✗ no policy named @id("{pid}"): the kata asks for it by name'))
+        lines.append(dim("    (a request test can't see it: default deny already refuses those requests;"
+                         " module 3 shows how to prove such invariants instead)"))
+
     tests = json.loads((ws / "tests.json").read_text())
     passed = 0
     for t in tests:
         got, reasons, errors, raw = cedar_authorize(schema, policies, entities, t, ws)
         want = t["decision"].upper()
-        why = f" ← {', '.join(reasons)}" if reasons else ""
+        why = f" ← {', '.join(reasons)}" if reasons else (" ← no permit matched (deny by default)" if got == "DENY" else "")
         if got == want:
             passed += 1
             lines.append(green(f"  ✓ {t['name']}: {got}") + dim(why))
@@ -162,7 +169,7 @@ def check_cedar(kata: Kata, ws: Path) -> Result:
             if got is None:
                 lines.append(dim("      " + raw.replace("\n", "\n      ")))
     lines.append(f"{passed}/{len(tests)} authorization tests pass")
-    return Result(passed == len(tests), lines)
+    return Result(passed == len(tests) and not missing, lines)
 
 
 # ------------------------------------------------------------ symcc katas ----
@@ -231,10 +238,14 @@ def describe_counterexample(out: str) -> list[str]:
         shown.append("  " + lines[1].strip())
     uids = re.findall(r"(?:principal|resource): ([^,]+::\"[^\"]*\")", lines[0])
     for uid in uids:
-        m = re.search(r"^\s*" + re.escape(uid) + r" \{\n(.*?)^\s*\},?$", cex, re.M | re.S)
+        m = re.search(r"^\s*" + re.escape(uid) + r"( in \[[^\]]*\])? \{\n(.*?)^\s*\},?$", cex, re.M | re.S)
         if m:
-            attrs = " ".join(a.strip() for a in m.group(1).splitlines()).rstrip(",")
-            shown.append(f"  {uid} {{ {attrs} }}")
+            attrs = " ".join(a.strip() for a in m.group(2).splitlines()).rstrip(",")
+            shown.append(f"  {uid}{m.group(1) or ''} {{ {attrs} }}")
+        else:
+            m = re.search(r"^\s*" + re.escape(uid) + r"( in \[[^\]]*\])?,?$", cex, re.M)
+            if m and m.group(1):
+                shown.append(f"  {uid}{m.group(1)}")
     return shown
 
 
@@ -293,6 +304,9 @@ def check_symcc(kata: Kata, ws: Path) -> Result:
                 lines.append(dim(f"      {err}"))
             if mgot is False:
                 lines.append(green(f"      ✓ catches the bug in {mutant}"))
+            elif mgot is None:
+                ok = False
+                lines.append(red(f"      ✗ the analysis failed on {mutant} (see the error above, or run cedar symcc by hand)"))
             else:
                 ok = False
                 lines.append(red(f"      ✗ is too weak: it does not catch the bug in {mutant}"))
@@ -331,16 +345,22 @@ def check_dogwood(kata: Kata, ws: Path) -> Result:
     got = verdicts(r.stdout)
     want = verdicts((ws / "expected.out").read_text())
 
+    # Your own scenario lines count too: annotate them with `-> ALLOW` / `-> DENY`.
     notes = {}
     for line in (ws / "scenario.trace").read_text().splitlines():
         m = re.match(r"^@(\d+)\s.*?#\s*(.*)$", line.strip())
         if m:
             notes[m.group(1)] = m.group(2)
+            a = re.search(r"->\s*(?:must\s+)?(ALLOW|DENY)\b", m.group(2))
+            if a and m.group(1) not in want:
+                want[m.group(1)] = a.group(1)
     passed = 0
-    for ts, w in want.items():
-        g = got.get(ts, "—")
+    for ts in sorted(set(want) | set(got), key=int):
+        g, w = got.get(ts, "—"), want.get(ts)
         note = dim(f"  # {notes[ts]}") if ts in notes else ""
-        if g == w:
+        if w is None:
+            lines.append(dim(f"  · @{ts:<7} {g}  (unchecked: annotate it with -> ALLOW or -> DENY)"))
+        elif g == w:
             passed += 1
             lines.append(green(f"  ✓ @{ts:<7} {g}") + note)
         else:
@@ -357,15 +377,38 @@ def lean_cmd() -> list[str] | None:
     return [str(elan_lake)] if elan_lake.exists() else None
 
 
+def theorem_statements(path: Path) -> dict[str, str]:
+    """name -> statement (everything between `theorem` and `:=`), whitespace-normalized."""
+    text = re.sub(r"/-.*?-/|--[^\n]*", "", path.read_text(), flags=re.S)
+    return {m.group(1): " ".join(m.group(2).split())
+            for m in re.finditer(r"^theorem\s+(\S+)(.*?):=", text, re.M | re.S)}
+
+
+def changed_statements(mine: Path, reference: Path) -> list[str]:
+    ref = theorem_statements(reference)
+    got = theorem_statements(mine)
+    return [name for name, stmt in ref.items() if got.get(name) != stmt]
+
+
 def check_lean(kata: Kata, ws: Path, solution: bool) -> Result:
     project = (kata.path / kata.spec["project"]).resolve()
     rel = kata.spec["solution"] if solution else kata.spec["file"]
     lake = lean_cmd()
     if lake is None:
         return Result(False, [red("✗ lake not found: see docs/setup.md to install Lean")])
+    if not solution:
+        changed = changed_statements(project / kata.spec["file"], project / kata.spec["solution"])
+        if changed:
+            return Result(False, [red(f"✗ you changed what a theorem says: {', '.join(changed)}"),
+                                  dim("    prove the statement as given; edit only the proof after `:= by`")])
     b = run([*lake, "build", "Course"], cwd=project, timeout=3600)
     if b.returncode != 0:
-        return Result(False, [red("✗ the Course library itself does not build:"), (b.stdout + b.stderr).rstrip()])
+        out = (b.stdout + b.stderr)
+        if "toolchain" in out or "elan" in out:
+            toolchain = (project / "lean-toolchain").read_text().strip()
+            return Result(False, [red(f"✗ the Lean toolchain {toolchain} is not installed or could not be downloaded"),
+                                  dim(f"    elan toolchain install {toolchain}   (offline? see docs/setup.md)")])
+        return Result(False, [red("✗ the Course library itself does not build:"), out.rstrip()[-3000:]])
     p = run([*lake, "env", "lean", rel], cwd=project, timeout=900)
     out = (p.stdout + p.stderr).strip()
     lines = []
@@ -531,9 +574,14 @@ def cmd_doctor(_args) -> int:
     p = run(["dogwood", "--version"])
     report("dogwood", p.returncode == 0, p.stdout.strip() or "not found", "scripts/setup.sh (builds the Dogwood CLI from source)")
     lake = lean_cmd()
-    p = run([*lake, "--version"]) if lake else None
-    report("lean", bool(p and p.returncode == 0), p.stdout.strip() if p and p.returncode == 0 else "lake not found",
-           "curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh")
+    lean_dir = ROOT / "modules/04-lean"
+    p = run([*lake, "--version"], cwd=lean_dir) if lake else None
+    if lake is None:
+        report("lean", False, "lake not found", "curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh")
+    else:
+        toolchain = (lean_dir / "lean-toolchain").read_text().strip()
+        report("lean", p.returncode == 0, p.stdout.strip() if p.returncode == 0 else f"Lean toolchain {toolchain} is not installed",
+               f"elan toolchain install {toolchain}   (no network to release.lean-lang.org? see docs/setup.md)")
     try:
         import z3  # noqa: F401
         report("z3 (py)", True, "python z3 bindings importable", "")

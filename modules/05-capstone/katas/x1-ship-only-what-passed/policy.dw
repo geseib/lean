@@ -1,7 +1,8 @@
 // KATA x1 — the session constitution from guard/policy.dw. Add one rule:
 //
 //   "ship-only-what-passed": a Deploy (to any env) is forbidden unless the
-//   tests passed on that branch within the last hour.
+//   tests passed on that branch within the last hour AND nothing was pushed
+//   to the branch since that green run (otherwise you'd ship an untested head).
 //
 // guard.py keys Deploy by `change` and RunTests by `pr`, both = the git branch.
 //

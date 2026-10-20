@@ -1,6 +1,7 @@
 id = "cedar/c2"
 title = "Separation of duties: the author never approves"
 type = "cedar"
+required_ids = ["agents-never-approve", "no-self-approval", "merge-on-green-with-a-human-approval"]
 hints = [
   "You need `forbid` policies: a forbid that matches always beats every permit.",
   "Compare entities directly: `when { resource.driver == principal }`.",

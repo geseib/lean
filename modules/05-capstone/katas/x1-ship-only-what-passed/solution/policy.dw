@@ -43,9 +43,11 @@ when temporal {
          n >= 3)
 };
 
-// Ship only what passed: any deploy needs a green test run on this branch in the last hour.
+// Ship only what passed: a green test run on this branch in the last hour, no push since.
 @id("ship-only-what-passed")
 forbid (principal, action == Drupe::Action::"Deploy", resource)
 unless temporal {
-    formerly within 1h Drupe::Action::"RunTests"::response{ input.pr: context.input.change, output.passed: true }
+    !Drupe::Action::"PushCommit"::request{ input.pr: context.input.change }
+    since within 1h
+    Drupe::Action::"RunTests"::response{ input.pr: context.input.change, output.passed: true }
 };
